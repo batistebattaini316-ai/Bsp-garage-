@@ -364,6 +364,53 @@
   .btn-edit-interv { background: none; border: 1px solid var(--or); color: var(--or); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 13px; margin-top: 8px; margin-right: 8px; }
   .interv-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
 
+  /* STATUT */
+  .badge-statut {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+  .statut-afaire { background: #3a1a1a; color: #e74c3c; border: 1px solid #e74c3c44; }
+  .statut-encours { background: #3a2e00; color: #f0c44a; border: 1px solid #f0c44a44; }
+  .statut-termine { background: #1a3a1a; color: #2ecc71; border: 1px solid #2ecc7144; }
+
+  .select-statut {
+    background: var(--noir3);
+    border: 1px solid var(--gris);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--texte);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+  }
+
+  /* FILTRES STATUT */
+  .filtres {
+    padding: 0 20px 12px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+  .filtre-btn {
+    background: var(--noir3);
+    border: 1px solid var(--gris);
+    color: var(--texte2);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .filtre-btn.active { background: var(--or); color: var(--noir); border-color: var(--or); }
+
   /* FORM MODAL */
   .form-modal {
     display: none;
@@ -508,6 +555,14 @@
   <button class="btn-add" onclick="openNewClientModal()">+ CLIENT</button>
 </div>
 
+<!-- FILTRES -->
+<div class="filtres">
+  <button class="filtre-btn active" onclick="setFiltre('tous')">🔍 Tous</button>
+  <button class="filtre-btn" onclick="setFiltre('afaire')">🔴 À faire</button>
+  <button class="filtre-btn" onclick="setFiltre('encours')">🟡 En cours</button>
+  <button class="filtre-btn" onclick="setFiltre('termine')">🟢 Terminés</button>
+</div>
+
 <!-- CLIENT LIST -->
 <div class="clients-list" id="clientsList">
   <div class="loading"><div class="spinner"></div>Chargement depuis Supabase...</div>
@@ -587,6 +642,14 @@
       </div>
       <div id="filePreview" style="margin-top:8px"></div>
     </div>
+    <div class="form-group">
+      <label>Statut</label>
+      <select id="inputIntervStatut" class="select-statut">
+        <option value="afaire">🔴 À faire</option>
+        <option value="encours">🟡 En cours</option>
+        <option value="termine">🟢 Terminé</option>
+      </select>
+    </div>
     <button class="btn-submit" id="btnSaveInterv" onclick="saveInterv()">ENREGISTRER</button>
   </div>
 </div>
@@ -660,6 +723,14 @@
   let clients = [];
   let currentClientId = null;
   let pendingFiles = [];
+  let filtreActif = 'tous';
+
+  function setFiltre(f) {
+    filtreActif = f;
+    document.querySelectorAll('.filtre-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    renderClients();
+  }
 
   // ─── TOAST ─────────────────────────────────────────────────
   function showToast(msg) {
@@ -732,11 +803,19 @@
   function renderClients() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const list = document.getElementById('clientsList');
-    const filtered = clients.filter(c =>
+
+    let filtered = clients.filter(c =>
       (c.nom||'').toLowerCase().includes(q) ||
       (c.plaque||'').toLowerCase().includes(q) ||
       (c.vehicule||'').toLowerCase().includes(q)
     );
+
+    // Filtre par statut
+    if (filtreActif !== 'tous') {
+      filtered = filtered.filter(c =>
+        (c.interventions || []).some(iv => (iv.statut || 'afaire') === filtreActif)
+      );
+    }
 
     document.getElementById('clientCount').textContent = `${clients.length} client${clients.length !== 1 ? 's' : ''}`;
 
@@ -749,6 +828,8 @@
       const nb = (c.interventions || []).length;
       const sorted = (c.interventions || []).slice().sort((a,b) => (a.date||'') > (b.date||'') ? 1 : -1);
       const last = nb ? `Dernière intervention : ${(sorted[nb-1].date || '—')}` : 'Aucune intervention';
+      const nbAfaire = (c.interventions||[]).filter(iv => (iv.statut||'afaire') === 'afaire').length;
+      const nbEncours = (c.interventions||[]).filter(iv => iv.statut === 'encours').length;
       return `
         <div class="client-card" onclick="openFiche('${c.id}')">
           <div class="client-info">
@@ -756,7 +837,11 @@
             <span class="client-plate">${c.plaque || '—'}</span>
             ${c.vehicule ? `<div class="client-meta">🚗 ${c.vehicule}</div>` : ''}
             <div class="client-meta">${last}</div>
-            ${nb ? `<span class="badge-interv">${nb} intervention${nb>1?'s':''}</span>` : ''}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+              ${nb ? `<span class="badge-interv">${nb} intervention${nb>1?'s':''}</span>` : ''}
+              ${nbAfaire ? `<span class="badge-statut statut-afaire">🔴 ${nbAfaire} à faire</span>` : ''}
+              ${nbEncours ? `<span class="badge-statut statut-encours">🟡 ${nbEncours} en cours</span>` : ''}
+            </div>
           </div>
           <span class="client-arrow">›</span>
         </div>`;
@@ -793,6 +878,9 @@
           <a href="${d.data}" download="${d.name}">${d.name}</a>
           <button class="btn-del-doc" onclick="deleteDoc('${iv.id}','${d.id}')">✕</button>
         </div>`).join('');
+      const statut = iv.statut || 'afaire';
+      const statutLabel = statut === 'afaire' ? '🔴 À faire' : statut === 'encours' ? '🟡 En cours' : '🟢 Terminé';
+      const statutClass = statut === 'afaire' ? 'statut-afaire' : statut === 'encours' ? 'statut-encours' : 'statut-termine';
       return `
         <div class="interv-card">
           <div class="interv-head" onclick="toggleInterv('iv_${iv.id}')">
@@ -800,6 +888,7 @@
               <div class="interv-date">${iv.date || '—'}</div>
               <div class="interv-title-text">${iv.titre || 'Intervention'}</div>
               ${iv.montant ? `<div class="interv-vehicle" style="color:var(--or)">💰 ${parseFloat(iv.montant).toFixed(2)} €</div>` : ''}
+              <span class="badge-statut ${statutClass}">${statutLabel}</span>
             </div>
             <span class="interv-chevron" id="chev_${iv.id}">▾</span>
           </div>
@@ -838,6 +927,7 @@
     document.getElementById('inputIntervTitre').value = '';
     document.getElementById('inputIntervDetail').value = '';
     document.getElementById('inputIntervMontant').value = '';
+    document.getElementById('inputIntervStatut').value = 'afaire';
     document.getElementById('filePreview').innerHTML = '';
     pendingFiles = [];
     document.getElementById('modalInterv').classList.add('active');
@@ -854,6 +944,7 @@
     document.getElementById('inputIntervTitre').value = iv.titre || '';
     document.getElementById('inputIntervDetail').value = iv.detail || '';
     document.getElementById('inputIntervMontant').value = iv.montant || '';
+    document.getElementById('inputIntervStatut').value = iv.statut || 'afaire';
     pendingFiles = [...(iv.docs || [])];
     const preview = document.getElementById('filePreview');
     preview.innerHTML = pendingFiles.map(d => `<div class="doc-item"><span class="doc-icon">📄</span><span style="flex:1;color:var(--texte2)">${d.name}</span></div>`).join('');
@@ -949,6 +1040,7 @@
       titre,
       detail: document.getElementById('inputIntervDetail').value.trim(),
       montant: document.getElementById('inputIntervMontant').value || null,
+      statut: document.getElementById('inputIntervStatut').value,
       docs: [...pendingFiles]
     };
 
