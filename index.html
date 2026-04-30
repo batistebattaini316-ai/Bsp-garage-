@@ -20,6 +20,52 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* LOGIN */
+  .login-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--noir);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+  }
+  .login-screen.hidden { display: none; }
+  .login-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    letter-spacing: 3px;
+    color: var(--or);
+    margin-bottom: 4px;
+  }
+  .login-sub {
+    font-size: 11px;
+    color: var(--texte2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .login-box {
+    background: var(--noir2);
+    border: 1px solid var(--gris);
+    border-top: 3px solid var(--or);
+    border-radius: 16px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .login-box .form-group { margin-bottom: 16px; }
+  .login-error {
+    color: #e74c3c;
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .login-error.show { display: block; }
+
   body {
     background: var(--noir);
     color: var(--texte);
@@ -428,6 +474,24 @@
 </head>
 <body>
 
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-logo">BS Performance</div>
+  <div class="login-sub">Accès sécurisé</div>
+  <div class="login-box">
+    <div class="login-error" id="loginError">Identifiants incorrects</div>
+    <div class="form-group">
+      <label>Nom d'utilisateur</label>
+      <input type="text" id="loginUser" placeholder="Nom d'utilisateur" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Mot de passe</label>
+      <input type="password" id="loginPass" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-submit" onclick="doLogin()">CONNEXION</button>
+  </div>
+</div>
+
 <!-- HEADER -->
 <header>
   <div>
@@ -532,6 +596,31 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  // ─── LOGIN ─────────────────────────────────────────────────
+  const USERS = { 'Admin bsp': 'Mx94ls61&*' };
+
+  function checkSession() {
+    if (sessionStorage.getItem('bsp_auth') === 'ok') {
+      document.getElementById('loginScreen').classList.add('hidden');
+      load();
+    }
+  }
+
+  function doLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    const err = document.getElementById('loginError');
+    if (USERS[user] && USERS[user] === pass) {
+      sessionStorage.setItem('bsp_auth', 'ok');
+      document.getElementById('loginScreen').classList.add('hidden');
+      load();
+    } else {
+      err.classList.add('show');
+      document.getElementById('loginPass').value = '';
+      setTimeout(() => err.classList.remove('show'), 3000);
+    }
+  }
+
   // ─── CONFIG SUPABASE ───────────────────────────────────────
   const SUPABASE_URL = 'https://valcdtfgziijidmitrmy.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhbGNkdGZnemlpamlkbWl0cm15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NTU0MTQsImV4cCI6MjA5MzEzMTQxNH0.DyRGowpmB2O3uzQgcN3jq-cIS9Onf7YDKEQZ5WavwMk';
@@ -943,7 +1032,7 @@
   }
 
   // ─── INIT ──────────────────────────────────────────────────
-  load();
+  checkSession();
 </script>
 </body>
 </html>
