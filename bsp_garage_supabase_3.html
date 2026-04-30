@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BS Performance — Garage</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --or: #C9A84C;
+    --or2: #f0c44a;
+    --noir: #0f0f0f;
+    --noir2: #1a1a1a;
+    --noir3: #252525;
+    --gris: #333;
+    --gris2: #555;
+    --texte: #e8e8e8;
+    --texte2: #aaa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--noir);
+    color: var(--texte);
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--noir2);
+    border-bottom: 3px solid var(--or);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 2px;
+    color: var(--or);
+    line-height: 1;
+  }
+  .logo-sub {
+    font-size: 10px;
+    color: var(--texte2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .header-count {
+    background: var(--or);
+    color: var(--noir);
+    font-weight: 700;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* SEARCH + ADD */
+  .toolbar {
+    padding: 16px 20px;
+    display: flex;
+    gap: 10px;
+  }
+  .search-box {
+    flex: 1;
+    background: var(--noir3);
+    border: 1px solid var(--gris);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--texte);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus { border-color: var(--or); }
+  .search-box::placeholder { color: var(--gris2); }
+  .btn-add {
+    background: var(--or);
+    color: var(--noir);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-add:active { transform: scale(0.96); }
+
+  /* CLIENT LIST */
+  .clients-list {
+    padding: 0 20px 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .client-card {
+    background: var(--noir2);
+    border: 1px solid var(--gris);
+    border-left: 4px solid var(--or);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .client-card:active { transform: scale(0.98); }
+  .client-card:hover { border-color: var(--or); background: var(--noir3); }
+  .client-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--texte);
+    margin-bottom: 4px;
+  }
+  .client-plate {
+    display: inline-block;
+    background: var(--noir);
+    border: 1.5px solid var(--or);
+    color: var(--or);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    padding: 2px 10px;
+    border-radius: 4px;
+  }
+  .client-meta {
+    font-size: 11px;
+    color: var(--texte2);
+    margin-top: 4px;
+  }
+  .client-arrow {
+    color: var(--or);
+    font-size: 20px;
+    opacity: 0.6;
+  }
+  .badge-interv {
+    background: var(--gris);
+    color: var(--texte2);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 4px;
+    display: inline-block;
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--texte2);
+  }
+  .empty-icon { font-size: 50px; margin-bottom: 12px; }
+  .empty h3 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gris2); letter-spacing: 1px; }
+
+  /* LOADING */
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--texte2);
+    font-size: 14px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--gris);
+    border-top-color: var(--or);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MODAL OVERLAY */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    overflow-y: auto;
+  }
+  .overlay.active { display: flex; flex-direction: column; }
+
+  /* FICHE CLIENT */
+  .fiche {
+    background: var(--noir2);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .fiche-header {
+    background: var(--noir);
+    border-bottom: 3px solid var(--or);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--or);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .fiche-title { flex: 1; }
+  .fiche-title h2 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; }
+  .fiche-title .plate { font-size: 13px; color: var(--or); letter-spacing: 2px; }
+  .btn-delete-client {
+    background: none;
+    border: none;
+    color: #c0392b;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  .fiche-body { padding: 20px; flex: 1; }
+
+  /* Interventions */
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 2px;
+    color: var(--or);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .btn-small {
+    background: var(--or);
+    color: var(--noir);
+    border: none;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-small-outline {
+    background: none;
+    color: var(--or);
+    border: 1px solid var(--or);
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Interventions */
+  .interv-card {
+    background: var(--noir3);
+    border: 1px solid var(--gris);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .interv-head {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+  .interv-head:hover { background: rgba(201,168,76,0.06); }
+  .interv-date {
+    font-size: 12px;
+    color: var(--or);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .interv-title-text { font-size: 15px; font-weight: 500; margin-top: 2px; }
+  .interv-vehicle { font-size: 11px; color: var(--texte2); }
+  .interv-chevron { color: var(--texte2); font-size: 16px; transition: transform 0.2s; }
+  .interv-chevron.open { transform: rotate(180deg); }
+
+  .interv-body {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--gris);
+  }
+  .interv-body.open { display: block; }
+  .interv-detail { font-size: 13px; color: var(--texte2); white-space: pre-wrap; margin: 10px 0; line-height: 1.6; }
+  .interv-docs { margin-top: 10px; }
+  .doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--noir2);
+    border: 1px solid var(--gris);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .doc-item a { color: var(--or); text-decoration: none; flex: 1; }
+  .doc-icon { font-size: 18px; }
+  .btn-del-doc { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 16px; }
+  .btn-del-interv { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 13px; margin-top: 8px; }
+  .btn-edit-interv { background: none; border: 1px solid var(--or); color: var(--or); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 13px; margin-top: 8px; margin-right: 8px; }
+  .interv-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+
+  /* FORM MODAL */
+  .form-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 300;
+    align-items: flex-end;
+  }
+  .form-modal.active { display: flex; }
+  .form-sheet {
+    background: var(--noir2);
+    border-top: 3px solid var(--or);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 40px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .form-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+    color: var(--or);
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .btn-close-modal { background: none; border: none; color: var(--texte2); font-size: 24px; cursor: pointer; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: var(--texte2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+  .form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    background: var(--noir3);
+    border: 1px solid var(--gris);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--texte);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group textarea:focus { border-color: var(--or); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .btn-submit {
+    width: 100%;
+    background: var(--or);
+    color: var(--noir);
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .divider { height: 1px; background: var(--gris); margin: 20px 0; }
+  .no-interv { color: var(--texte2); font-size: 13px; text-align: center; padding: 20px; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--gris2);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    color: var(--texte2);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    margin-top: 8px;
+  }
+  .upload-zone:hover { border-color: var(--or); color: var(--or); }
+  .upload-zone input { display: none; }
+
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--or);
+    color: var(--noir);
+    font-weight: 700;
+    padding: 10px 24px;
+    border-radius: 30px;
+    font-size: 14px;
+    z-index: 999;
+    transition: transform 0.3s;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* DB status indicator */
+  .db-status {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+  }
+  .db-ok { background: #1a3a1a; color: #4caf50; }
+  .db-err { background: #3a1a1a; color: #f44336; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div>
+    <div class="logo-text">BS Performance</div>
+    <div class="logo-sub">Gestion Clientèle</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="db-status" id="dbStatus">⏳</span>
+    <div class="header-count" id="clientCount">0 clients</div>
+  </div>
+</header>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <input class="search-box" type="text" placeholder="🔍  Rechercher un client, une plaque..." id="searchInput" oninput="renderClients()">
+  <button class="btn-add" onclick="openNewClientModal()">+ CLIENT</button>
+</div>
+
+<!-- CLIENT LIST -->
+<div class="clients-list" id="clientsList">
+  <div class="loading"><div class="spinner"></div>Chargement depuis Supabase...</div>
+</div>
+
+<!-- FICHE CLIENT OVERLAY -->
+<div class="overlay" id="ficheOverlay">
+  <div class="fiche">
+    <div class="fiche-header">
+      <button class="btn-back" onclick="closeFiche()">&#8592;</button>
+      <div class="fiche-title">
+        <h2 id="ficheNom">—</h2>
+        <div class="plate" id="fichePlaque">—</div>
+      </div>
+      <button class="btn-delete-client" onclick="deleteClient()" title="Supprimer ce client">🗑</button>
+    </div>
+    <div class="fiche-body">
+      <div class="section-title">
+        INTERVENTIONS
+        <button class="btn-small" onclick="openNewIntervModal()">+ Ajouter</button>
+      </div>
+      <div id="intervList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOUVEAU CLIENT -->
+<div class="form-modal" id="modalClient">
+  <div class="form-sheet">
+    <div class="form-title">NOUVEAU CLIENT <button class="btn-close-modal" onclick="closeModal('modalClient')">✕</button></div>
+    <div class="form-group">
+      <label>Nom complet</label>
+      <input type="text" id="inputNom" placeholder="Ex: Valentin Mongondry">
+    </div>
+    <div class="form-group">
+      <label>Plaque d'immatriculation</label>
+      <input type="text" id="inputPlaque" placeholder="Ex: AB-123-CD" style="text-transform:uppercase" oninput="formatPlaque(this)" maxlength="9">
+    </div>
+    <div class="form-group">
+      <label>Véhicule</label>
+      <input type="text" id="inputVehicule" placeholder="Ex: Peugeot 207 1.4 HDi">
+    </div>
+    <div class="form-group">
+      <label>Téléphone (optionnel)</label>
+      <input type="tel" id="inputTel" placeholder="06 xx xx xx xx">
+    </div>
+    <button class="btn-submit" id="btnSaveClient" onclick="saveClient()">ENREGISTRER</button>
+  </div>
+</div>
+
+<!-- MODAL NOUVELLE / MODIFIER INTERVENTION -->
+<div class="form-modal" id="modalInterv">
+  <div class="form-sheet">
+    <div class="form-title" id="modalIntervTitle">NOUVELLE INTERVENTION <button class="btn-close-modal" onclick="closeModal('modalInterv')">✕</button></div>
+    <input type="hidden" id="inputIntervId">
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="inputDate">
+    </div>
+    <div class="form-group">
+      <label>Titre / Type d'intervention</label>
+      <input type="text" id="inputIntervTitre" placeholder="Ex: Révision, Freins, Suspension...">
+    </div>
+    <div class="form-group">
+      <label>Détails des travaux</label>
+      <textarea id="inputIntervDetail" placeholder="Pièces changées, remarques, kilométrage..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Montant (€)</label>
+      <input type="number" id="inputIntervMontant" placeholder="Ex: 482.80" step="0.01">
+    </div>
+    <div class="form-group">
+      <label>Joindre un devis / document (PDF)</label>
+      <div class="upload-zone" onclick="document.getElementById('inputFile').click()">
+        📎 Appuyer pour joindre un fichier PDF
+        <input type="file" id="inputFile" accept=".pdf,.png,.jpg,.jpeg" multiple onchange="handleFiles(this)">
+      </div>
+      <div id="filePreview" style="margin-top:8px"></div>
+    </div>
+    <button class="btn-submit" id="btnSaveInterv" onclick="saveInterv()">ENREGISTRER</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ─── CONFIG SUPABASE ───────────────────────────────────────
+  const SUPABASE_URL = 'https://valcdtfgziijidmitrmy.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhbGNkdGZnemlpamlkbWl0cm15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NTU0MTQsImV4cCI6MjA5MzEzMTQxNH0.DyRGowpmB2O3uzQgcN3jq-cIS9Onf7YDKEQZ5WavwMk';
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Prefer': 'return=representation'
+  };
+
+  async function sbGet(table, params = '') {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params}`, { headers });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  async function sbPost(table, body) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST', headers, body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  async function sbPatch(table, id, body) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH', headers, body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  async function sbDelete(table, id) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'DELETE', headers
+    });
+    if (!r.ok) throw new Error(await r.text());
+  }
+
+  // ─── STATE ─────────────────────────────────────────────────
+  let clients = [];
+  let currentClientId = null;
+  let pendingFiles = [];
+
+  // ─── TOAST ─────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function setDbStatus(ok) {
+    const el = document.getElementById('dbStatus');
+    el.textContent = ok ? '🟢 Supabase' : '🔴 Hors ligne';
+    el.className = 'db-status ' + (ok ? 'db-ok' : 'db-err');
+  }
+
+  // ─── INIT : créer les tables si besoin ────────────────────
+  // Les tables doivent exister dans Supabase. 
+  // SQL à exécuter dans l'éditeur SQL Supabase (une seule fois) :
+  /*
+    CREATE TABLE IF NOT EXISTS bsp_clients (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      nom text NOT NULL,
+      plaque text,
+      vehicule text,
+      tel text,
+      created_at timestamptz DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS bsp_interventions (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      client_id uuid REFERENCES bsp_clients(id) ON DELETE CASCADE,
+      date text,
+      titre text NOT NULL,
+      detail text,
+      montant numeric,
+      docs jsonb DEFAULT '[]',
+      created_at timestamptz DEFAULT now()
+    );
+  */
+
+  // ─── LOAD ──────────────────────────────────────────────────
+  async function load() {
+    try {
+      // Charger clients + leurs interventions
+      const [cls, intervs] = await Promise.all([
+        sbGet('bsp_clients', '?order=created_at.asc'),
+        sbGet('bsp_interventions', '?order=created_at.asc')
+      ]);
+
+      // Attacher les interventions à chaque client
+      clients = cls.map(c => ({
+        ...c,
+        interventions: intervs.filter(iv => iv.client_id === c.id)
+      }));
+
+      setDbStatus(true);
+      renderClients();
+    } catch (e) {
+      console.error(e);
+      setDbStatus(false);
+      // Fallback localStorage
+      const d = localStorage.getItem('bsp_clients');
+      clients = d ? JSON.parse(d) : [];
+      renderClients();
+      showToast('⚠️ Mode hors ligne (localStorage)');
+    }
+  }
+
+  // ─── RENDER CLIENTS ────────────────────────────────────────
+  function renderClients() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const list = document.getElementById('clientsList');
+    const filtered = clients.filter(c =>
+      (c.nom||'').toLowerCase().includes(q) ||
+      (c.plaque||'').toLowerCase().includes(q) ||
+      (c.vehicule||'').toLowerCase().includes(q)
+    );
+
+    document.getElementById('clientCount').textContent = `${clients.length} client${clients.length !== 1 ? 's' : ''}`;
+
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">🏎️</div><h3>${clients.length ? 'Aucun résultat' : 'Aucun client'}</h3><p style="margin-top:8px;font-size:13px;color:#555">Ajoute ton premier client avec le bouton <b style="color:var(--or)">+ CLIENT</b></p></div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(c => {
+      const nb = (c.interventions || []).length;
+      const sorted = (c.interventions || []).slice().sort((a,b) => (a.date||'') > (b.date||'') ? 1 : -1);
+      const last = nb ? `Dernière intervention : ${(sorted[nb-1].date || '—')}` : 'Aucune intervention';
+      return `
+        <div class="client-card" onclick="openFiche('${c.id}')">
+          <div class="client-info">
+            <h3>${c.nom}</h3>
+            <span class="client-plate">${c.plaque || '—'}</span>
+            ${c.vehicule ? `<div class="client-meta">🚗 ${c.vehicule}</div>` : ''}
+            <div class="client-meta">${last}</div>
+            ${nb ? `<span class="badge-interv">${nb} intervention${nb>1?'s':''}</span>` : ''}
+          </div>
+          <span class="client-arrow">›</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ─── FICHE CLIENT ──────────────────────────────────────────
+  function openFiche(id) {
+    currentClientId = id;
+    const c = clients.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('ficheNom').textContent = c.nom;
+    document.getElementById('fichePlaque').textContent = c.plaque + (c.vehicule ? ' — ' + c.vehicule : '');
+    renderIntervs(c);
+    document.getElementById('ficheOverlay').classList.add('active');
+  }
+
+  function closeFiche() {
+    document.getElementById('ficheOverlay').classList.remove('active');
+    currentClientId = null;
+  }
+
+  function renderIntervs(c) {
+    const list = document.getElementById('intervList');
+    const intervs = (c.interventions || []).slice().reverse();
+    if (!intervs.length) {
+      list.innerHTML = '<div class="no-interv">Aucune intervention enregistrée</div>';
+      return;
+    }
+    list.innerHTML = intervs.map((iv) => {
+      const docs = (iv.docs || []).map(d => `
+        <div class="doc-item">
+          <span class="doc-icon">📄</span>
+          <a href="${d.data}" download="${d.name}">${d.name}</a>
+          <button class="btn-del-doc" onclick="deleteDoc('${iv.id}','${d.id}')">✕</button>
+        </div>`).join('');
+      return `
+        <div class="interv-card">
+          <div class="interv-head" onclick="toggleInterv('iv_${iv.id}')">
+            <div>
+              <div class="interv-date">${iv.date || '—'}</div>
+              <div class="interv-title-text">${iv.titre || 'Intervention'}</div>
+              ${iv.montant ? `<div class="interv-vehicle" style="color:var(--or)">💰 ${parseFloat(iv.montant).toFixed(2)} €</div>` : ''}
+            </div>
+            <span class="interv-chevron" id="chev_${iv.id}">▾</span>
+          </div>
+          <div class="interv-body" id="iv_${iv.id}">
+            ${iv.detail ? `<div class="interv-detail">${iv.detail}</div>` : ''}
+            ${docs ? `<div class="interv-docs">${docs}</div>` : ''}
+            <div class="interv-actions">
+              <button class="btn-edit-interv" onclick="openEditIntervModal('${iv.id}')">✏️ Modifier</button>
+              <button class="btn-del-interv" onclick="deleteInterv('${iv.id}')">🗑 Supprimer</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function toggleInterv(id) {
+    const body = document.getElementById(id);
+    const chev = document.getElementById('chev_' + id.replace('iv_',''));
+    if (body) { body.classList.toggle('open'); }
+    if (chev) { chev.classList.toggle('open'); }
+  }
+
+  // ─── MODALS ────────────────────────────────────────────────
+  function openNewClientModal() {
+    document.getElementById('inputNom').value = '';
+    document.getElementById('inputPlaque').value = '';
+    document.getElementById('inputVehicule').value = '';
+    document.getElementById('inputTel').value = '';
+    document.getElementById('modalClient').classList.add('active');
+  }
+
+  function openNewIntervModal() {
+    document.getElementById('inputIntervId').value = '';
+    document.getElementById('modalIntervTitle').innerHTML = 'NOUVELLE INTERVENTION <button class="btn-close-modal" onclick="closeModal(\'modalInterv\')">✕</button>';
+    document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('inputIntervTitre').value = '';
+    document.getElementById('inputIntervDetail').value = '';
+    document.getElementById('inputIntervMontant').value = '';
+    document.getElementById('filePreview').innerHTML = '';
+    pendingFiles = [];
+    document.getElementById('modalInterv').classList.add('active');
+  }
+
+  function openEditIntervModal(ivId) {
+    const c = clients.find(x => x.id === currentClientId);
+    if (!c) return;
+    const iv = c.interventions.find(x => x.id === ivId);
+    if (!iv) return;
+    document.getElementById('inputIntervId').value = ivId;
+    document.getElementById('modalIntervTitle').innerHTML = 'MODIFIER INTERVENTION <button class="btn-close-modal" onclick="closeModal(\'modalInterv\')">✕</button>';
+    document.getElementById('inputDate').value = iv.date || '';
+    document.getElementById('inputIntervTitre').value = iv.titre || '';
+    document.getElementById('inputIntervDetail').value = iv.detail || '';
+    document.getElementById('inputIntervMontant').value = iv.montant || '';
+    pendingFiles = [...(iv.docs || [])];
+    const preview = document.getElementById('filePreview');
+    preview.innerHTML = pendingFiles.map(d => `<div class="doc-item"><span class="doc-icon">📄</span><span style="flex:1;color:var(--texte2)">${d.name}</span></div>`).join('');
+    document.getElementById('modalInterv').classList.add('active');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+  }
+
+  // ─── SAVE CLIENT ───────────────────────────────────────────
+  async function saveClient() {
+    const nom = document.getElementById('inputNom').value.trim();
+    const plaque = document.getElementById('inputPlaque').value.trim().toUpperCase();
+    if (!nom) { alert('Le nom est requis.'); return; }
+
+    const btn = document.getElementById('btnSaveClient');
+    btn.disabled = true; btn.textContent = 'Enregistrement...';
+
+    try {
+      const [newClient] = await sbPost('bsp_clients', {
+        nom, plaque,
+        vehicule: document.getElementById('inputVehicule').value.trim(),
+        tel: document.getElementById('inputTel').value.trim()
+      });
+      newClient.interventions = [];
+      clients.push(newClient);
+      renderClients();
+      closeModal('modalClient');
+      showToast('✅ Client ajouté !');
+    } catch(e) {
+      console.error(e);
+      // Fallback localStorage
+      const c = {
+        id: Date.now().toString(), nom, plaque,
+        vehicule: document.getElementById('inputVehicule').value.trim(),
+        tel: document.getElementById('inputTel').value.trim(),
+        interventions: []
+      };
+      clients.push(c);
+      localStorage.setItem('bsp_clients', JSON.stringify(clients));
+      renderClients();
+      closeModal('modalClient');
+      showToast('✅ Client ajouté (hors ligne)');
+    } finally {
+      btn.disabled = false; btn.textContent = 'ENREGISTRER';
+    }
+  }
+
+  // ─── FILE HANDLING ─────────────────────────────────────────
+  function handleFiles(input) {
+    const preview = document.getElementById('filePreview');
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const doc = { id: Date.now().toString() + Math.random(), name: file.name, data: e.target.result };
+        pendingFiles.push(doc);
+        preview.innerHTML += `<div class="doc-item"><span class="doc-icon">📄</span><span style="flex:1;color:var(--texte2)">${file.name}</span></div>`;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ─── FORMAT PLAQUE ─────────────────────────────────────────
+  function formatPlaque(input) {
+    let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    let result = '';
+    if (val.length <= 2) {
+      result = val;
+    } else if (val.length <= 5) {
+      result = val.slice(0,2) + '-' + val.slice(2);
+    } else {
+      result = val.slice(0,2) + '-' + val.slice(2,5) + '-' + val.slice(5,7);
+    }
+    input.value = result;
+  }
+
+  // ─── SAVE INTERVENTION (création + modification) ───────────
+  async function saveInterv() {
+    const c = clients.find(x => x.id === currentClientId);
+    if (!c) return;
+    const titre = document.getElementById('inputIntervTitre').value.trim();
+    if (!titre) { alert('Le titre est requis.'); return; }
+
+    const btn = document.getElementById('btnSaveInterv');
+    btn.disabled = true; btn.textContent = 'Enregistrement...';
+
+    const ivId = document.getElementById('inputIntervId').value;
+    const isEdit = !!ivId;
+
+    const ivData = {
+      date: document.getElementById('inputDate').value,
+      titre,
+      detail: document.getElementById('inputIntervDetail').value.trim(),
+      montant: document.getElementById('inputIntervMontant').value || null,
+      docs: [...pendingFiles]
+    };
+
+    try {
+      if (isEdit) {
+        await sbPatch('bsp_interventions', ivId, ivData);
+        const iv = c.interventions.find(x => x.id === ivId);
+        if (iv) Object.assign(iv, ivData);
+        showToast('✅ Intervention modifiée !');
+      } else {
+        const [newIv] = await sbPost('bsp_interventions', { client_id: currentClientId, ...ivData });
+        c.interventions = c.interventions || [];
+        c.interventions.push(newIv);
+        showToast('✅ Intervention enregistrée !');
+      }
+      renderIntervs(c);
+      renderClients();
+      closeModal('modalInterv');
+    } catch(e) {
+      console.error(e);
+      if (isEdit) {
+        const iv = c.interventions.find(x => x.id === ivId);
+        if (iv) Object.assign(iv, ivData);
+      } else {
+        const newIv = { id: Date.now().toString(), client_id: currentClientId, ...ivData };
+        c.interventions = c.interventions || [];
+        c.interventions.push(newIv);
+      }
+      localStorage.setItem('bsp_clients', JSON.stringify(clients));
+      renderIntervs(c);
+      renderClients();
+      closeModal('modalInterv');
+      showToast(isEdit ? '✅ Modifié (hors ligne)' : '✅ Enregistré (hors ligne)');
+    } finally {
+      btn.disabled = false; btn.textContent = 'ENREGISTRER';
+    }
+  }
+
+  // ─── DELETE CLIENT ─────────────────────────────────────────
+  async function deleteClient() {
+    if (!confirm('Supprimer ce client et toutes ses interventions ?')) return;
+    try {
+      await sbDelete('bsp_clients', currentClientId);
+    } catch(e) { console.error(e); }
+    clients = clients.filter(x => x.id !== currentClientId);
+    localStorage.setItem('bsp_clients', JSON.stringify(clients));
+    renderClients();
+    closeFiche();
+    showToast('🗑 Client supprimé');
+  }
+
+  async function deleteInterv(ivId) {
+    if (!confirm('Supprimer cette intervention ?')) return;
+    const c = clients.find(x => x.id === currentClientId);
+    if (!c) return;
+    try {
+      await sbDelete('bsp_interventions', ivId);
+    } catch(e) { console.error(e); }
+    c.interventions = c.interventions.filter(x => x.id !== ivId);
+    renderIntervs(c);
+    renderClients();
+    showToast('🗑 Intervention supprimée');
+  }
+
+  async function deleteDoc(ivId, docId) {
+    const c = clients.find(x => x.id === currentClientId);
+    if (!c) return;
+    const iv = c.interventions.find(x => x.id === ivId);
+    if (!iv) return;
+    iv.docs = (iv.docs || []).filter(d => d.id !== docId);
+    try {
+      await sbPatch('bsp_interventions', ivId, { docs: iv.docs });
+    } catch(e) { console.error(e); }
+    renderIntervs(c);
+    showToast('🗑 Document supprimé');
+  }
+
+  // ─── INIT ──────────────────────────────────────────────────
+  load();
+</script>
+</body>
+</html>
