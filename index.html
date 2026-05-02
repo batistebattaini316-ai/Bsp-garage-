@@ -477,7 +477,8 @@
     if (pageId === 'pageClient') {
       const nom = document.getElementById('clientNom').textContent;
       document.getElementById('panelClientTitle').textContent = '📋 NOTES — ' + nom;
-      renderNotes('client');
+      notesCache['client'] = [];
+      fetchNotes('client');
     }
   }
 
