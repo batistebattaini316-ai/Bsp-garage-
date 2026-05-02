@@ -151,7 +151,18 @@
   .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--or); color: var(--noir); font-weight: 700; padding: 10px 24px; border-radius: 30px; font-size: 14px; z-index: 999; transition: transform 0.3s; }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* BULLE NOTES */
+  /* PAIEMENTS */
+  .paiement-item { background: var(--noir3); border: 1px solid var(--gris); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .paiement-left { flex: 1; }
+  .paiement-desc { font-size: 14px; font-weight: 600; color: var(--texte); margin-bottom: 3px; }
+  .paiement-meta { font-size: 11px; color: var(--texte2); }
+  .paiement-right { text-align: right; }
+  .paiement-montant { font-size: 16px; font-weight: 700; color: var(--texte); }
+  .badge-paiement { display: inline-block; font-size: 11px; font-weight: 900; padding: 3px 12px; border-radius: 6px; margin-top: 3px; letter-spacing: 1.5px; }
+  .p-acompte { background: #3a2e00; color: #f0c44a; border: 1px solid #f0c44a66; }
+  .p-solde   { background: #1a1a3a; color: #6699ff; border: 1px solid #6699ff66; }
+  .p-paye    { background: #1a3a1a; color: #2ecc71; border: 1px solid #2ecc7166; }
+  .p-impaye  { background: #3a1a1a; color: #e74c3c; border: 1px solid #e74c3c66; }
   .notes-fab { position: fixed; bottom: 24px; right: 20px; width: 52px; height: 52px; background: var(--or); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; z-index: 200; box-shadow: 0 4px 16px rgba(201,168,76,0.4); transition: transform 0.2s; border: none; }
   .notes-fab:active { transform: scale(0.92); }
   .notes-fab .notes-badge { position: absolute; top: -4px; right: -4px; background: #e74c3c; color: #fff; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
@@ -246,6 +257,29 @@
 
   <!-- Infos client -->
   <div class="info-box" id="clientInfoBox"></div>
+
+  <!-- Paiements résumé -->
+  <div id="paiementsResume" style="margin:0 20px 16px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;display:none">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      💳 PAIEMENTS
+      <button class="btn-add" style="font-size:13px;padding:5px 12px" onclick="openModal_Paiement()">+ AJOUTER</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ</div>
+        <div id="pTotalDu" style="font-size:16px;font-weight:700;color:var(--texte)">0 €</div>
+      </div>
+      <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">PAYÉ</div>
+        <div id="pTotalPaye" style="font-size:16px;font-weight:700;color:#2ecc71">0 €</div>
+      </div>
+      <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">RESTANT</div>
+        <div id="pTotalRestant" style="font-size:16px;font-weight:700;color:#e74c3c">0 €</div>
+      </div>
+    </div>
+    <div id="paiementsList"></div>
+  </div>
 
   <!-- Véhicules -->
   <div class="section-header">
@@ -346,6 +380,26 @@
       <div id="filePreview" style="margin-top:8px"></div>
     </div>
     <button class="btn-submit" id="btnSaveInterv" onclick="saveInterv()">ENREGISTRER</button>
+  </div>
+</div>
+
+<!-- MODAL PAIEMENT -->
+<div class="form-modal" id="modalPaiement">
+  <div class="form-sheet">
+    <div class="form-title" id="modalPaiementTitle">NOUVEAU PAIEMENT <button class="btn-close-modal" onclick="closeModal('modalPaiement')">✕</button></div>
+    <input type="hidden" id="inputPaiementId">
+    <div class="form-group"><label>Description *</label><input type="text" id="inputPaiementDesc" placeholder="Ex: Révision moteur, Acompte freins..."></div>
+    <div class="form-group"><label>Montant (€) *</label><input type="number" id="inputPaiementMontant" placeholder="Ex: 350.00" step="0.01"></div>
+    <div class="form-group"><label>Type</label>
+      <select id="inputPaiementType">
+        <option value="acompte">Acompte</option>
+        <option value="solde">Solde</option>
+        <option value="paye">Payé</option>
+        <option value="impaye">Impayé</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Date</label><input type="date" id="inputPaiementDate"></div>
+    <button class="btn-submit" id="btnSavePaiement" onclick="savePaiement()">ENREGISTRER</button>
   </div>
 </div>
 
@@ -559,6 +613,7 @@
     `;
 
     renderVehicules();
+    loadPaiements();
     goTo('pageClient');
   }
 
@@ -920,6 +975,130 @@
     else if (val.length <= 5) result = val.slice(0,2) + '-' + val.slice(2);
     else result = val.slice(0,2) + '-' + val.slice(2,5) + '-' + val.slice(5,7);
     input.value = result;
+  }
+
+  // ─── PAIEMENTS ─────────────────────────────────────────────
+  let paiements = [];
+
+  async function loadPaiements() {
+    try {
+      // Filtré STRICTEMENT par client_id — aucune interférence
+      paiements = await sbGet('bsp_paiements', '?client_id=eq.' + currentClientId + '&order=created_at.asc');
+      renderPaiements();
+    } catch(e) {
+      console.error('Erreur chargement paiements', e);
+    }
+  }
+
+  function renderPaiements() {
+    const resume = document.getElementById('paiementsResume');
+    const list = document.getElementById('paiementsList');
+    resume.style.display = 'block';
+
+    const labels = { acompte: 'ACOMPTE', solde: 'SOLDE', paye: 'PAYÉ', impaye: 'IMPAYÉ' };
+    const classes = { acompte: 'p-acompte', solde: 'p-solde', paye: 'p-paye', impaye: 'p-impaye' };
+
+    // Calculs totaux
+    const totalDu = paiements.filter(p => p.type !== 'paye').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+    const totalPaye = paiements.filter(p => p.type === 'paye' || p.type === 'acompte').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+    const restant = paiements.filter(p => p.type === 'impaye' || p.type === 'solde').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+
+    document.getElementById('pTotalDu').textContent = totalDu.toFixed(2) + ' €';
+    document.getElementById('pTotalPaye').textContent = totalPaye.toFixed(2) + ' €';
+    document.getElementById('pTotalRestant').textContent = restant.toFixed(2) + ' €';
+
+    if (paiements.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--texte2);font-size:13px">Aucun paiement enregistré</div>';
+      return;
+    }
+
+    list.innerHTML = paiements.map(p => {
+      const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '';
+      return `
+      <div class="paiement-item">
+        <div class="paiement-left">
+          <div class="paiement-desc">${p.description || '—'}</div>
+          <div class="paiement-meta">${d}</div>
+          <span class="badge-paiement ${classes[p.type]}">${labels[p.type]}</span>
+        </div>
+        <div class="paiement-right">
+          <div class="paiement-montant">${parseFloat(p.montant).toFixed(2)} €</div>
+          <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
+            <button style="background:none;border:1px solid var(--or);color:var(--or);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer" onclick="editPaiement('${p.id}')">✏️</button>
+            <button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px" onclick="deletePaiement('${p.id}')">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function openModal_Paiement() {
+    document.getElementById('inputPaiementId').value = '';
+    document.getElementById('inputPaiementDesc').value = '';
+    document.getElementById('inputPaiementMontant').value = '';
+    document.getElementById('inputPaiementType').value = 'acompte';
+    document.getElementById('inputPaiementDate').value = new Date().toISOString().split('T')[0];
+    setModalTitle('modalPaiementTitle', 'NOUVEAU PAIEMENT', 'modalPaiement');
+    openModal('modalPaiement');
+  }
+
+  function editPaiement(id) {
+    const p = paiements.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('inputPaiementId').value = id;
+    document.getElementById('inputPaiementDesc').value = p.description || '';
+    document.getElementById('inputPaiementMontant').value = p.montant || '';
+    document.getElementById('inputPaiementType').value = p.type || 'acompte';
+    document.getElementById('inputPaiementDate').value = p.date_paiement || '';
+    setModalTitle('modalPaiementTitle', 'MODIFIER PAIEMENT', 'modalPaiement');
+    openModal('modalPaiement');
+  }
+
+  async function savePaiement() {
+    const desc = document.getElementById('inputPaiementDesc').value.trim();
+    const montant = document.getElementById('inputPaiementMontant').value;
+    if (!desc || !montant) { alert('Description et montant requis.'); return; }
+
+    const btn = document.getElementById('btnSavePaiement');
+    btn.disabled = true; btn.textContent = 'Enregistrement...';
+
+    const id = document.getElementById('inputPaiementId').value;
+    const data = {
+      description: desc,
+      montant: parseFloat(montant),
+      type: document.getElementById('inputPaiementType').value,
+      date_paiement: document.getElementById('inputPaiementDate').value || null,
+      client_id: currentClientId  // TOUJOURS lié au client courant
+    };
+
+    try {
+      if (id) {
+        await sbPatch('bsp_paiements', id, data);
+        const idx = paiements.findIndex(x => x.id === id);
+        if (idx !== -1) Object.assign(paiements[idx], data);
+        showToast('✅ Paiement modifié !');
+      } else {
+        const [newP] = await sbPost('bsp_paiements', data);
+        paiements.push(newP);
+        showToast('✅ Paiement ajouté !');
+      }
+      renderPaiements();
+      closeModal('modalPaiement');
+    } catch(e) {
+      showToast('🔴 Erreur de sauvegarde');
+    } finally {
+      btn.disabled = false; btn.textContent = 'ENREGISTRER';
+    }
+  }
+
+  async function deletePaiement(id) {
+    if (!confirm('Supprimer ce paiement ?')) return;
+    try {
+      await sbDelete('bsp_paiements', id);
+      paiements = paiements.filter(x => x.id !== id);
+      renderPaiements();
+      showToast('🗑 Paiement supprimé');
+    } catch(e) { showToast('🔴 Erreur'); }
   }
 
   // ─── NOTES SYSTÈME ─────────────────────────────────────────
