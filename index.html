@@ -541,6 +541,7 @@
   // ─── OPEN CLIENT ───────────────────────────────────────────
   function openClient(id) {
     currentClientId = id;
+    notesCache['client'] = [];
     const c = clients.find(x => x.id === id);
     if (!c) return;
     document.getElementById('clientNom').textContent = c.nom;
