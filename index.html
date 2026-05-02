@@ -129,7 +129,7 @@
   .form-modal.active { display: flex; }
   .form-sheet { background: var(--noir2); border-top: 3px solid var(--or); border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-height: 90vh; overflow-y: auto; }
   .form-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; color: var(--or); margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
-  .btn-close-modal { background: none; border: none; color: var(--texte2); font-size: 24px; cursor: pointer; }
+  .btn-close-modal { background: none; border: none; color: var(--texte2); font-size: 24px; cursor: pointer; padding: 8px 12px; margin: -8px -12px; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
   .form-group { margin-bottom: 14px; }
   .form-group label { display: block; font-size: 12px; color: var(--texte2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
   .form-group input, .form-group textarea, .form-group select { width: 100%; background: var(--noir3); border: 1px solid var(--gris); border-radius: 10px; padding: 11px 14px; color: var(--texte); font-family: 'Barlow', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s; }
@@ -736,7 +736,16 @@
 
   // ─── MODALS ────────────────────────────────────────────────
   function openModal(id) { document.getElementById(id).classList.add('active'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+  }
+
+  // Fermer modal en cliquant sur le fond sombre
+  document.querySelectorAll('.form-modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeModal(modal.id);
+    });
+  });
 
   // ─── SAVE CLIENT ───────────────────────────────────────────
   function openEditClient() {
