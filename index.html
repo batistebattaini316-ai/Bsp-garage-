@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BS Performance — Garage</title>
-<link rel="apple-touch-icon" href="icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="BS Performance">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -153,6 +150,27 @@
   /* TOAST */
   .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--or); color: var(--noir); font-weight: 700; padding: 10px 24px; border-radius: 30px; font-size: 14px; z-index: 999; transition: transform 0.3s; }
   .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* BULLE NOTES */
+  .notes-fab { position: fixed; bottom: 24px; right: 20px; width: 52px; height: 52px; background: var(--or); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; z-index: 200; box-shadow: 0 4px 16px rgba(201,168,76,0.4); transition: transform 0.2s; border: none; }
+  .notes-fab:active { transform: scale(0.92); }
+  .notes-fab .notes-badge { position: absolute; top: -4px; right: -4px; background: #e74c3c; color: #fff; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+  .notes-panel { position: fixed; bottom: 90px; right: 16px; width: calc(100vw - 32px); max-width: 380px; background: var(--noir2); border: 1px solid var(--gris); border-top: 3px solid var(--or); border-radius: 16px; z-index: 200; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-height: 70vh; overflow: hidden; flex-direction: column; }
+  .notes-panel.open { display: flex; }
+  .notes-panel-header { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--gris); }
+  .notes-panel-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; color: var(--or); }
+  .notes-list { overflow-y: auto; flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .note-item { background: var(--noir3); border: 1px solid var(--gris); border-radius: 10px; padding: 10px 12px; }
+  .note-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .note-author { font-size: 11px; font-weight: 700; color: var(--or); }
+  .note-date { font-size: 10px; color: var(--texte2); }
+  .note-text { font-size: 13px; color: var(--texte); line-height: 1.5; white-space: pre-wrap; }
+  .note-del { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 14px; padding: 0 4px; }
+  .notes-input-area { padding: 10px; border-top: 1px solid var(--gris); display: flex; gap: 8px; align-items: flex-end; }
+  .notes-input-area textarea { flex: 1; background: var(--noir3); border: 1px solid var(--gris); border-radius: 10px; padding: 8px 12px; color: var(--texte); font-family: 'Barlow', sans-serif; font-size: 13px; resize: none; outline: none; min-height: 38px; max-height: 100px; }
+  .notes-input-area textarea:focus { border-color: var(--or); }
+  .btn-send-note { background: var(--or); border: none; border-radius: 10px; width: 38px; height: 38px; cursor: pointer; font-size: 16px; flex-shrink: 0; }
+  .notes-empty { text-align: center; padding: 24px; color: var(--texte2); font-size: 13px; }
 
   /* DB STATUS */
   .db-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
@@ -333,6 +351,38 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- BULLE NOTES GLOBALES (menu principal) -->
+<button class="notes-fab" id="fabGlobal" onclick="toggleNotes('global')" style="display:none">
+  📝<span class="notes-badge" id="badgeGlobal" style="display:none">0</span>
+</button>
+<div class="notes-panel" id="panelGlobal">
+  <div class="notes-panel-header">
+    <span class="notes-panel-title">📝 PENSE-BÊTE</span>
+    <button class="btn-close-modal" onclick="toggleNotes('global')">✕</button>
+  </div>
+  <div class="notes-list" id="listGlobal"></div>
+  <div class="notes-input-area">
+    <textarea id="inputNoteGlobal" placeholder="Écrire une note..." rows="1" oninput="autoResize(this)"></textarea>
+    <button class="btn-send-note" onclick="addNote('global')">➤</button>
+  </div>
+</div>
+
+<!-- BULLE NOTES CLIENT (fiche client) -->
+<button class="notes-fab" id="fabClient" onclick="toggleNotes('client')" style="display:none">
+  📋<span class="notes-badge" id="badgeClient" style="display:none">0</span>
+</button>
+<div class="notes-panel" id="panelClient">
+  <div class="notes-panel-header">
+    <span class="notes-panel-title" id="panelClientTitle">📋 NOTES CLIENT</span>
+    <button class="btn-close-modal" onclick="toggleNotes('client')">✕</button>
+  </div>
+  <div class="notes-list" id="listClient"></div>
+  <div class="notes-input-area">
+    <textarea id="inputNoteClient" placeholder="Note sur ce client..." rows="1" oninput="autoResize(this)"></textarea>
+    <button class="btn-send-note" onclick="addNote('client')">➤</button>
+  </div>
+</div>
+
 <script>
   // ─── HELPERS TITRES MODALS ────────────────────────────────
   function setModalTitle(elId, txt, modalId) {
@@ -389,7 +439,10 @@
     const pass = document.getElementById('loginPass').value;
     const err = document.getElementById('loginError');
     if (USERS[user] && USERS[user] === pass) {
+      currentNoteUser = user;
       document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('fabGlobal').style.display = 'flex';
+      renderNotes('global');
       load();
     } else {
       err.classList.add('show');
@@ -417,6 +470,15 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     window.scrollTo(0,0);
+    document.getElementById('panelGlobal').classList.remove('open');
+    document.getElementById('panelClient').classList.remove('open');
+    document.getElementById('fabGlobal').style.display = (pageId === 'pageClients') ? 'flex' : 'none';
+    document.getElementById('fabClient').style.display = (pageId === 'pageClient') ? 'flex' : 'none';
+    if (pageId === 'pageClient') {
+      const nom = document.getElementById('clientNom').textContent;
+      document.getElementById('panelClientTitle').textContent = '📋 NOTES — ' + nom;
+      renderNotes('client');
+    }
   }
 
   // ─── LOAD ──────────────────────────────────────────────────
@@ -858,10 +920,131 @@
     input.value = result;
   }
 
-  // ─── INIT ──────────────────────────────────────────────────
+  // ─── NOTES SYSTÈME ─────────────────────────────────────────
+  let currentNoteUser = 'bsp';
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+  }
+
+  function toggleNotes(type) {
+    const panel = document.getElementById('panel' + (type === 'global' ? 'Global' : 'Client'));
+    panel.classList.toggle('open');
+  }
+
+  let notesCache = { global: [], client: [] };
+
+  async function loadNotesGlobal() {
+    await fetchNotes('global');
+  }
+
+  async function loadNotesClient() {
+    await fetchNotes('client');
+  }
+
+  async function fetchNotes(type) {
+    const listEl = document.getElementById('list' + (type === 'global' ? 'Global' : 'Client'));
+    listEl.innerHTML = '<div class="notes-empty">⏳ Chargement...</div>';
+    try {
+      let params = '?order=created_at.asc';
+      if (type === 'global') params += '&type=eq.global';
+      else params += '&type=eq.client&client_id=eq.' + currentClientId;
+      const notes = await sbGet('bsp_notes', params);
+      notesCache[type] = notes;
+      renderNotes(type);
+    } catch(e) {
+      listEl.innerHTML = '<div class="notes-empty">🔴 Erreur de chargement</div>';
+    }
+  }
+
+  function renderNotes(type) {
+    const notes = notesCache[type] || [];
+    const listEl = document.getElementById('list' + (type === 'global' ? 'Global' : 'Client'));
+    const badge = document.getElementById('badge' + (type === 'global' ? 'Global' : 'Client'));
+
+    if (notes.length === 0) {
+      listEl.innerHTML = '<div class="notes-empty">Aucune note pour l\'instant</div>';
+    } else {
+      listEl.innerHTML = notes.map(n => {
+        const d = new Date(n.created_at);
+        const dateStr = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+        return `
+        <div class="note-item">
+          <div class="note-item-header">
+            <span class="note-author">👤 ${n.author}</span>
+            <span style="display:flex;align-items:center;gap:6px">
+              <span class="note-date">${dateStr}</span>
+              <button class="note-del" onclick="deleteNote('${type}', '${n.id}')">🗑</button>
+            </span>
+          </div>
+          <div class="note-text">${n.text.replace(/</g,'&lt;')}</div>
+        </div>`;
+      }).join('');
+      listEl.scrollTop = listEl.scrollHeight;
+    }
+
+    if (notes.length > 0) {
+      badge.textContent = notes.length;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  async function addNote(type) {
+    const inputEl = document.getElementById('inputNote' + (type === 'global' ? 'Global' : 'Client'));
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    const body = { author: currentNoteUser, text, type };
+    if (type === 'client') body.client_id = currentClientId;
+
+    try {
+      const [note] = await sbPost('bsp_notes', body);
+      notesCache[type].push(note);
+      renderNotes(type);
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+    } catch(e) {
+      showToast('🔴 Erreur envoi note');
+    }
+  }
+
+  async function deleteNote(type, noteId) {
+    try {
+      await sbDelete('bsp_notes', noteId);
+      notesCache[type] = notesCache[type].filter(n => n.id !== noteId);
+      renderNotes(type);
+    } catch(e) {
+      showToast('🔴 Erreur suppression');
+    }
+  }
+
+  // Fermer panels si clic hors
+  document.addEventListener('click', function(e) {
+    ['Global','Client'].forEach(t => {
+      const panel = document.getElementById('panel' + t);
+      const fab = document.getElementById('fab' + t);
+      if (panel && panel.classList.contains('open') && !panel.contains(e.target) && e.target !== fab && !fab.contains(e.target)) {
+        panel.classList.remove('open');
+      }
+    });
+  });
+
+  // Envoi note avec Ctrl+Enter
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      if (document.getElementById('panelGlobal').classList.contains('open')) addNote('global');
+      if (document.getElementById('panelClient').classList.contains('open')) addNote('client');
+    }
+  });
+
+
   // Initialiser le champ date par défaut
   document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+    loadNotesGlobal();
   });
 </script>
 </body>
