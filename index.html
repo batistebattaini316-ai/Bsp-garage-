@@ -265,16 +265,16 @@
       <button class="btn-add" style="font-size:13px;padding:5px 12px" onclick="openModal_Paiement()">+ AJOUTER</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+      <div onclick="editMontantInline('totaldu')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
         <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ</div>
         <div id="pTotalDu" style="font-size:16px;font-weight:700;color:var(--texte)">0 €</div>
       </div>
-      <div onclick="quickAddPaiement('paye')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer;border:1px solid transparent;transition:border 0.2s" onmouseover="this.style.border='1px solid #2ecc71'" onmouseout="this.style.border='1px solid transparent'">
-        <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ ＋</div>
+      <div onclick="editMontantInline('paye')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
+        <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ</div>
         <div id="pTotalPaye" style="font-size:16px;font-weight:700;color:#2ecc71">0 €</div>
       </div>
-      <div onclick="quickAddPaiement('impaye')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer;border:1px solid transparent;transition:border 0.2s" onmouseover="this.style.border='1px solid #e74c3c'" onmouseout="this.style.border='1px solid transparent'">
-        <div style="font-size:10px;color:#e74c3c;margin-bottom:2px">RESTANT ＋</div>
+      <div onclick="editMontantInline('restant')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
+        <div style="font-size:10px;color:#e74c3c;margin-bottom:2px">RESTANT</div>
         <div id="pTotalRestant" style="font-size:16px;font-weight:700;color:#e74c3c">0 €</div>
       </div>
     </div>
@@ -1007,14 +1007,8 @@
     const labels = { acompte: 'ACOMPTE', solde: 'SOLDE', paye: 'PAYÉ', impaye: 'IMPAYÉ' };
     const classes = { acompte: 'p-acompte', solde: 'p-solde', paye: 'p-paye', impaye: 'p-impaye' };
 
-    // Calculs totaux
-    const totalDu = paiements.filter(p => p.type !== 'paye').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-    const totalPaye = paiements.filter(p => p.type === 'paye' || p.type === 'acompte').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-    const restant = paiements.filter(p => p.type === 'impaye' || p.type === 'solde').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-
-    document.getElementById('pTotalDu').textContent = totalDu.toFixed(2) + ' €';
-    document.getElementById('pTotalPaye').textContent = totalPaye.toFixed(2) + ' €';
-    document.getElementById('pTotalRestant').textContent = restant.toFixed(2) + ' €';
+    // Afficher les valeurs inline (éditées directement)
+    refreshInlineDisplay();
 
     if (paiements.length === 0) {
       list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--texte2);font-size:13px">Aucun paiement enregistré</div>';
@@ -1041,15 +1035,60 @@
     }).join('');
   }
 
-  function quickAddPaiement(type) {
-    document.getElementById('inputPaiementId').value = '';
-    document.getElementById('inputPaiementDesc').value = '';
-    document.getElementById('inputPaiementMontant').value = '';
-    document.getElementById('inputPaiementType').value = type;
-    document.getElementById('inputPaiementDate').value = new Date().toISOString().split('T')[0];
-    const labels = { paye: 'PAYÉ', impaye: 'IMPAYÉ', acompte: 'ACOMPTE', solde: 'SOLDE' };
-    setModalTitle('modalPaiementTitle', labels[type], 'modalPaiement');
-    openModal('modalPaiement');
+  // Édition inline des montants — pas de modal
+  const inlineKeys = { totaldu: 'bsp_montant_totaldu', paye: 'bsp_montant_paye', restant: 'bsp_montant_restant' };
+  const inlineColors = { totaldu: 'var(--texte)', paye: '#2ecc71', restant: '#e74c3c' };
+  const inlineElIds = { totaldu: 'pTotalDu', paye: 'pTotalPaye', restant: 'pTotalRestant' };
+
+  function getInlineVal(type) {
+    const key = 'bsp_' + currentClientId + '_' + type;
+    return parseFloat(localStorage.getItem(key) || '0');
+  }
+  function setInlineVal(type, val) {
+    const key = 'bsp_' + currentClientId + '_' + type;
+    localStorage.setItem(key, val);
+  }
+
+  function editMontantInline(type) {
+    const elId = inlineElIds[type];
+    const el = document.getElementById(elId);
+    const color = inlineColors[type];
+    const current = getInlineVal(type);
+
+    // Remplacer le texte par un input directement dans la case
+    el.innerHTML = `<input id="inlineInput_${type}" type="number" step="0.01" value="${current}"
+      style="width:100%;background:transparent;border:none;border-bottom:2px solid ${color};color:${color};
+      font-size:16px;font-weight:700;text-align:center;outline:none;padding:2px 0;"
+      onblur="confirmInline('${type}')"
+      onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape')cancelInline('${type}',${current})">`;
+
+    const input = document.getElementById('inlineInput_' + type);
+    input.focus();
+    input.select();
+  }
+
+  function confirmInline(type) {
+    const input = document.getElementById('inlineInput_' + type);
+    if (!input) return;
+    const val = parseFloat(input.value) || 0;
+    setInlineVal(type, val);
+    refreshInlineDisplay();
+  }
+
+  function cancelInline(type, original) {
+    setInlineVal(type, original);
+    refreshInlineDisplay();
+  }
+
+  function refreshInlineDisplay() {
+    const vals = {
+      totaldu: getInlineVal('totaldu'),
+      paye: getInlineVal('paye'),
+      restant: getInlineVal('restant')
+    };
+    document.getElementById('pTotalDu').textContent = vals.totaldu.toFixed(2) + ' €';
+    document.getElementById('pTotalPaye').textContent = vals.paye.toFixed(2) + ' €';
+    document.getElementById('pTotalRestant').textContent = vals.restant.toFixed(2) + ' €';
   }
 
   function openModal_Paiement() {
