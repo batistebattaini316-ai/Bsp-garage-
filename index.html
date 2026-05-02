@@ -269,12 +269,12 @@
         <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ</div>
         <div id="pTotalDu" style="font-size:16px;font-weight:700;color:var(--texte)">0 €</div>
       </div>
-      <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
-        <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">PAYÉ</div>
+      <div onclick="quickAddPaiement('paye')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer;border:1px solid transparent;transition:border 0.2s" onmouseover="this.style.border='1px solid #2ecc71'" onmouseout="this.style.border='1px solid transparent'">
+        <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ ＋</div>
         <div id="pTotalPaye" style="font-size:16px;font-weight:700;color:#2ecc71">0 €</div>
       </div>
-      <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
-        <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">RESTANT</div>
+      <div onclick="quickAddPaiement('impaye')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer;border:1px solid transparent;transition:border 0.2s" onmouseover="this.style.border='1px solid #e74c3c'" onmouseout="this.style.border='1px solid transparent'">
+        <div style="font-size:10px;color:#e74c3c;margin-bottom:2px">RESTANT ＋</div>
         <div id="pTotalRestant" style="font-size:16px;font-weight:700;color:#e74c3c">0 €</div>
       </div>
     </div>
@@ -1039,6 +1039,17 @@
         </div>
       </div>`;
     }).join('');
+  }
+
+  function quickAddPaiement(type) {
+    document.getElementById('inputPaiementId').value = '';
+    document.getElementById('inputPaiementDesc').value = '';
+    document.getElementById('inputPaiementMontant').value = '';
+    document.getElementById('inputPaiementType').value = type;
+    document.getElementById('inputPaiementDate').value = new Date().toISOString().split('T')[0];
+    const labels = { paye: 'PAYÉ', impaye: 'IMPAYÉ', acompte: 'ACOMPTE', solde: 'SOLDE' };
+    setModalTitle('modalPaiementTitle', labels[type], 'modalPaiement');
+    openModal('modalPaiement');
   }
 
   function openModal_Paiement() {
