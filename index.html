@@ -1017,43 +1017,69 @@
     const labels = { acompte: 'ACOMPTE', solde: 'SOLDE', paye: 'PAYÉ', impaye: 'IMPAYÉ' };
     const classes = { acompte: 'p-acompte', solde: 'p-solde', paye: 'p-paye', impaye: 'p-impaye' };
 
-    // Construire la liste des sections à afficher
-    // Section "Général" toujours en premier (section_id = null)
-    const allSections = [{ id: null, titre: 'Général' }, ...sections];
+    // Calcul des totaux généraux (somme de toutes les sections)
+    let grandTotalDu = 0, grandTotalPaye = 0;
+    sections.forEach(sec => {
+      grandTotalDu += parseFloat(sec.total_du || 0);
+      grandTotalPaye += parseFloat(sec.total_paye || 0);
+    });
+    const grandRestant = grandTotalDu - grandTotalPaye;
 
     let html = '';
-    allSections.forEach(sec => {
-      const secPaiements = paiements.filter(p => (p.section_id || null) === sec.id);
-      const totalDu = secPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      const totalPaye = secPaiements.filter(p => p.type === 'paye').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+
+    // ── BLOC GÉNÉRAL (lecture seule, somme auto) ──────────────
+    html += `<div style="margin:0 20px 14px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px">
+        💳 GÉNÉRAL
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ</div>
+          <div style="font-size:16px;font-weight:700;color:var(--texte)">${grandTotalDu.toFixed(2)} €</div>
+        </div>
+        <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ</div>
+          <div style="font-size:16px;font-weight:700;color:#2ecc71">${grandTotalPaye.toFixed(2)} €</div>
+        </div>
+        <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:#e74c3c;margin-bottom:2px">RESTANT</div>
+          <div style="font-size:16px;font-weight:700;color:#e74c3c">${grandRestant.toFixed(2)} €</div>
+        </div>
+      </div>
+    </div>`;
+
+    // ── BLOCS SECTIONS (cliquables) ───────────────────────────
+    sections.forEach(sec => {
+      const secPaiements = paiements.filter(p => p.section_id === sec.id);
+      const totalDu = parseFloat(sec.total_du || 0);
+      const totalPaye = parseFloat(sec.total_paye || 0);
       const totalRestant = totalDu - totalPaye;
 
-      html += `<div style="margin:0 20px 14px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;">
-        <!-- Titre section -->
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-          💳 ${sec.titre.toUpperCase()}
+      html += `<div style="margin:0 20px 14px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid #4a90d9;border-radius:12px;padding:14px 16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:#4a90d9;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          🔧 ${sec.titre.toUpperCase()}
           <div style="display:flex;gap:6px;align-items:center">
-            ${sec.id ? `<button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px" onclick="deleteSection('${sec.id}')">🗑</button>` : ''}
-            <button class="btn-add" style="font-size:12px;padding:4px 12px" onclick="openModal_Paiement('${sec.id || ''}')">+ AJOUTER</button>
+            <button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px" onclick="deleteSection('${sec.id}')">🗑</button>
+            <button class="btn-add" style="font-size:12px;padding:4px 12px" onclick="openModal_Paiement('${sec.id}')">+ AJOUTER</button>
           </div>
         </div>
-        <!-- Totaux -->
+        <!-- Totaux cliquables -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-          <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ</div>
-            <div style="font-size:16px;font-weight:700;color:var(--texte)">${totalDu.toFixed(2)} €</div>
+          <div onclick="editSecMontant('${sec.id}','total_du')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
+            <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ ✏️</div>
+            <div id="sec_du_${sec.id}" style="font-size:16px;font-weight:700;color:var(--texte)">${totalDu.toFixed(2)} €</div>
           </div>
-          <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ</div>
-            <div style="font-size:16px;font-weight:700;color:#2ecc71">${totalPaye.toFixed(2)} €</div>
+          <div onclick="editSecMontant('${sec.id}','total_paye')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
+            <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ ✏️</div>
+            <div id="sec_paye_${sec.id}" style="font-size:16px;font-weight:700;color:#2ecc71">${totalPaye.toFixed(2)} €</div>
           </div>
           <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
             <div style="font-size:10px;color:#e74c3c;margin-bottom:2px">RESTANT</div>
-            <div style="font-size:16px;font-weight:700;color:#e74c3c">${totalRestant.toFixed(2)} €</div>
+            <div id="sec_restant_${sec.id}" style="font-size:16px;font-weight:700;color:#e74c3c">${totalRestant.toFixed(2)} €</div>
           </div>
         </div>
         <!-- Liste paiements -->
-        ${secPaiements.length === 0 ? '<div style="text-align:center;padding:10px;color:var(--texte2);font-size:13px">Aucun paiement enregistré</div>' : ''}
+        ${secPaiements.length === 0 ? '<div style="text-align:center;padding:10px;color:var(--texte2);font-size:13px">Aucun paiement détaillé</div>' : ''}
         ${secPaiements.map(p => {
           const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '';
           return `<div class="paiement-item">
@@ -1075,6 +1101,41 @@
     });
 
     sectionsDiv.innerHTML = html;
+  }
+
+  // Édition inline des montants d'une section
+  function editSecMontant(secId, field) {
+    const elId = field === 'total_du' ? 'sec_du_' + secId : 'sec_paye_' + secId;
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const sec = sections.find(s => s.id === secId);
+    if (!sec) return;
+    const current = parseFloat(sec[field] || 0);
+    const color = field === 'total_du' ? 'var(--texte)' : '#2ecc71';
+
+    el.innerHTML = `<input id="inp_${field}_${secId}" type="number" step="0.01" value="${current}"
+      style="width:100%;background:transparent;border:none;border-bottom:2px solid ${color};color:${color};
+      font-size:16px;font-weight:700;text-align:center;outline:none;padding:2px 0;"
+      onblur="confirmSecMontant('${secId}','${field}')"
+      onkeydown="if(event.key==='Enter')this.blur()">`;
+    document.getElementById('inp_' + field + '_' + secId).focus();
+  }
+
+  async function confirmSecMontant(secId, field) {
+    const inp = document.getElementById('inp_' + field + '_' + secId);
+    if (!inp) return;
+    const val = parseFloat(inp.value) || 0;
+    const sec = sections.find(s => s.id === secId);
+    if (!sec) return;
+    sec[field] = val;
+    // Recalcul restant
+    const restant = parseFloat(sec.total_du || 0) - parseFloat(sec.total_paye || 0);
+    sec.total_restant = restant;
+    // Sauvegarder dans Supabase
+    try {
+      await sbPatch('bsp_sections_paiement', secId, { [field]: val, total_restant: restant });
+    } catch(e) { showToast('🔴 Erreur sauvegarde'); }
+    renderPaiements();
   }
 
   function openModalNouvelleSection() {
