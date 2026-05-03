@@ -267,7 +267,7 @@
   <div id="paiementsResume" style="margin:0 20px 16px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;display:none">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
       💳 PAIEMENTS
-      <button class="btn-add" style="font-size:13px;padding:5px 12px" onclick="openModal_Paiement('')">+ AJOUTER</button>
+      <button class="btn-add" style="font-size:13px;padding:5px 12px" onclick="openModalNouvelleSection()">+ NOUVELLE SECTION</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <div onclick="editMontantInline('totaldu')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
@@ -385,6 +385,18 @@
       <div id="filePreview" style="margin-top:8px"></div>
     </div>
     <button class="btn-submit" id="btnSaveInterv" onclick="saveInterv()">ENREGISTRER</button>
+  </div>
+</div>
+
+<!-- MODAL NOUVELLE SECTION PAIEMENT -->
+<div class="form-modal" id="modalNouvelleSection">
+  <div class="form-sheet">
+    <div class="form-title">NOUVELLE SECTION <button class="btn-close-modal" onclick="closeModal('modalNouvelleSection')">✕</button></div>
+    <div class="form-group">
+      <label>Titre de la section *</label>
+      <input type="text" id="inputSectionTitre" placeholder="Ex: Révision freins, Courroie distribution...">
+    </div>
+    <button class="btn-submit" id="btnSaveSection" onclick="saveNouvelleSection()">CRÉER LA SECTION</button>
   </div>
 </div>
 
@@ -1006,6 +1018,9 @@
     }
   }
 
+  // Stockage local des sections (titre custom par section_key)
+  let sectionsLabels = {};
+
   function renderPaiements() {
     const resume = document.getElementById('paiementsResume');
     const list = document.getElementById('paiementsList');
@@ -1013,38 +1028,53 @@
     const labels = { acompte: 'ACOMPTE', solde: 'SOLDE', paye: 'PAYÉ', impaye: 'IMPAYÉ' };
     const classes = { acompte: 'p-acompte', solde: 'p-solde', paye: 'p-paye', impaye: 'p-impaye' };
     refreshInlineDisplay();
-    if (paiements.length === 0) {
-      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--texte2);font-size:13px">Aucun paiement enregistré</div><button onclick="openModal_Paiement()" style="width:100%;background:none;border:1px dashed var(--gris2);color:var(--texte2);border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-top:4px">+ Nouvelle section</button>';
-      return;
-    }
+
+    // Grouper par section_key (intervention_id ou '__general__')
     const groups = {};
+    // Toujours afficher au moins la section générale
+    groups['__general__'] = [];
     paiements.forEach(p => {
       const key = p.intervention_id || '__general__';
       if (!groups[key]) groups[key] = [];
       groups[key].push(p);
     });
+    // Ajouter les sections vides sauvegardées
+    Object.keys(sectionsLabels).forEach(k => { if (!groups[k]) groups[k] = []; });
+
     let html = '';
     Object.keys(groups).forEach(key => {
       const gp = groups[key];
-      let groupTitle = '📋 Général';
-      if (key !== '__general__') {
-        const iv = interventions.find(x => x.id === key);
-        groupTitle = iv ? '🔧 ' + (iv.titre || 'Intervention') : '🔧 Intervention';
-      }
+      let groupTitle = sectionsLabels[key] || (key === '__general__' ? '📋 Général' : ('📋 Section ' + key.substring(0,4)));
       const total = gp.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      html += `<div style="margin-bottom:14px;background:var(--noir);border-radius:10px;padding:10px">
+      html += `<div style="margin-bottom:14px;background:var(--noir);border-radius:10px;padding:10px;border:1px solid var(--gris)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:12px;font-weight:700;color:var(--or);letter-spacing:1px">${groupTitle}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--or);letter-spacing:1px">${groupTitle}</span>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:12px;color:var(--texte2)">${total.toFixed(2)} €</span>
-            <button style="background:var(--or);color:var(--noir);border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer" onclick="openModal_Paiement('${key === '__general__' ? '' : key}')">+ Ajouter</button>
+            <button style="background:var(--or);color:var(--noir);border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer" onclick="openModal_Paiement('${key}')">+ Ajouter</button>
           </div>
         </div>
+        ${gp.length === 0 ? '<div style="text-align:center;padding:10px;color:var(--texte2);font-size:12px">Aucun paiement — appuyez sur + Ajouter</div>' : ''}
         ${gp.map(p => { const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : ''; return `<div class="paiement-item"><div class="paiement-left"><div class="paiement-desc">${p.description || '—'}</div><div class="paiement-meta">${d}</div><span class="badge-paiement ${classes[p.type]}">${labels[p.type]}</span></div><div class="paiement-right"><div class="paiement-montant">${parseFloat(p.montant).toFixed(2)} €</div><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button style="background:none;border:1px solid var(--or);color:var(--or);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer" onclick="editPaiement('${p.id}')">✏️</button><button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px" onclick="deletePaiement('${p.id}')">🗑</button></div></div></div>`; }).join('')}
       </div>`;
     });
-    html += `<button onclick="openModal_Paiement()" style="width:100%;background:none;border:1px dashed var(--gris2);color:var(--texte2);border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-top:4px">+ Nouvelle section intervention</button>`;
     list.innerHTML = html;
+  }
+
+  function openModalNouvelleSection() {
+    document.getElementById('inputSectionTitre').value = '';
+    openModal('modalNouvelleSection');
+  }
+
+  function saveNouvelleSection() {
+    const titre = document.getElementById('inputSectionTitre').value.trim();
+    if (!titre) { alert('Donnez un titre à cette section'); return; }
+    // Créer une clé unique pour cette section
+    const key = 'sec_' + Date.now();
+    sectionsLabels[key] = '📋 ' + titre;
+    closeModal('modalNouvelleSection');
+    renderPaiements();
+    showToast('✅ Section "' + titre + '" créée !');
   }
 
   // Édition inline des montants — synchronisé via Supabase
@@ -1129,17 +1159,20 @@
     document.getElementById('pTotalRestant').textContent = parseFloat(totauxCache.total_restant || 0).toFixed(2) + ' €';
   }
 
-  function openModal_Paiement(intervId) {
+  function openModal_Paiement(sectionKey) {
     document.getElementById('inputPaiementId').value = '';
-    document.getElementById('inputPaiementIntervId').value = intervId || '';
+    // Si c'est une clé de section custom (sec_xxx), on ne la met pas comme intervention_id
+    const isCustomSection = sectionKey && sectionKey.startsWith('sec_');
+    document.getElementById('inputPaiementIntervId').value = isCustomSection ? '' : (sectionKey || '');
     document.getElementById('inputPaiementDesc').value = '';
     document.getElementById('inputPaiementMontant').value = '';
     document.getElementById('inputPaiementType').value = 'acompte';
     document.getElementById('inputPaiementDate').value = new Date().toISOString().split('T')[0];
-    // Titre avec nom intervention si applicable
     let titre = 'NOUVEAU PAIEMENT';
-    if (intervId) {
-      const iv = interventions.find(x => x.id === intervId);
+    if (sectionKey && sectionsLabels[sectionKey]) {
+      titre = 'PAIEMENT — ' + sectionsLabels[sectionKey].replace('📋 ','').toUpperCase();
+    } else if (sectionKey && !sectionKey.startsWith('sec_')) {
+      const iv = interventions.find(x => x.id === sectionKey);
       if (iv) titre = 'PAIEMENT — ' + (iv.titre || 'Intervention').toUpperCase();
     }
     setModalTitle('modalPaiementTitle', titre, 'modalPaiement');
