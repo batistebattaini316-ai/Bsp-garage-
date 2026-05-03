@@ -1209,26 +1209,38 @@
     btn.disabled = true; btn.textContent = 'Enregistrement...';
 
     const id = document.getElementById('inputPaiementId').value;
+    const type = document.getElementById('inputPaiementType').value;
+    const montantVal = parseFloat(montant);
     const data = {
       description: desc,
-      montant: parseFloat(montant),
-      type: document.getElementById('inputPaiementType').value,
+      montant: montantVal,
+      type: type,
       date_paiement: document.getElementById('inputPaiementDate').value || null,
       client_id: currentClientId,
       section_id: currentSectionId || null
     };
 
     try {
+      // Sauvegarder le paiement
       if (id) {
+        // Modifier : recalculer la section en repartant de zéro
+        const oldP = paiements.find(x => x.id === id);
         await sbPatch('bsp_paiements', id, data);
         const idx = paiements.findIndex(x => x.id === id);
         if (idx !== -1) Object.assign(paiements[idx], data);
         showToast('✅ Paiement modifié !');
       } else {
+        // Nouveau paiement
         const [newP] = await sbPost('bsp_paiements', data);
         paiements.push(newP);
         showToast('✅ Paiement ajouté !');
       }
+
+      // Mettre à jour automatiquement les totaux de la section
+      if (currentSectionId) {
+        await recalcSection(currentSectionId);
+      }
+
       renderPaiements();
       closeModal('modalPaiement');
     } catch(e) {
@@ -1238,11 +1250,39 @@
     }
   }
 
+  // Recalcule total_du et total_paye d'une section depuis ses paiements
+  async function recalcSection(secId) {
+    const secPaiements = paiements.filter(p => p.section_id === secId);
+    const newDu = secPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+    const newPaye = secPaiements
+      .filter(p => p.type === 'paye')
+      .reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+    const newRestant = newDu - newPaye;
+
+    const sec = sections.find(s => s.id === secId);
+    if (sec) {
+      sec.total_du = newDu;
+      sec.total_paye = newPaye;
+      sec.total_restant = newRestant;
+    }
+    try {
+      await sbPatch('bsp_sections_paiement', secId, {
+        total_du: newDu,
+        total_paye: newPaye,
+        total_restant: newRestant
+      });
+    } catch(e) { console.error('Erreur recalcul section', e); }
+  }
+
   async function deletePaiement(id) {
     if (!confirm('Supprimer ce paiement ?')) return;
     try {
+      const p = paiements.find(x => x.id === id);
+      const secId = p ? p.section_id : null;
       await sbDelete('bsp_paiements', id);
       paiements = paiements.filter(x => x.id !== id);
+      // Recalculer la section si applicable
+      if (secId) await recalcSection(secId);
       renderPaiements();
       showToast('🗑 Paiement supprimé');
     } catch(e) { showToast('🔴 Erreur'); }
