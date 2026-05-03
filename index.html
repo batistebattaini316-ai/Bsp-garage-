@@ -1252,19 +1252,28 @@
 
   // Recalcule total_du et total_paye d'une section depuis ses paiements
   async function recalcSection(secId) {
+    const sec = sections.find(s => s.id === secId);
+    if (!sec) return;
+
     const secPaiements = paiements.filter(p => p.section_id === secId);
-    const newDu = secPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-    const newPaye = secPaiements
-      .filter(p => p.type === 'paye')
+
+    // TOTAL DÛ = somme des IMPAYÉS uniquement
+    const newDu = secPaiements
+      .filter(p => p.type === 'impaye')
       .reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+
+    // PAYÉ = somme des paye + acompte + solde
+    const newPaye = secPaiements
+      .filter(p => ['paye', 'acompte', 'solde'].includes(p.type))
+      .reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+
+    // RESTANT = DÛ - PAYÉ
     const newRestant = newDu - newPaye;
 
-    const sec = sections.find(s => s.id === secId);
-    if (sec) {
-      sec.total_du = newDu;
-      sec.total_paye = newPaye;
-      sec.total_restant = newRestant;
-    }
+    sec.total_du = newDu;
+    sec.total_paye = newPaye;
+    sec.total_restant = newRestant;
+
     try {
       await sbPatch('bsp_sections_paiement', secId, {
         total_du: newDu,
