@@ -1028,9 +1028,11 @@
     let html = '';
 
     // ── BLOC GÉNÉRAL (lecture seule, somme auto) ──────────────
+    const nbSections = sections.length;
     html += `<div style="margin:0 20px 14px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
         💳 GÉNÉRAL
+        ${nbSections > 0 ? `<button onclick="toggleSections()" id="btnToggleSections" style="background:none;border:1px solid var(--gris);color:var(--texte2);border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif">${nbSections} section${nbSections > 1 ? 's' : ''} ▼</button>` : ''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
@@ -1048,7 +1050,8 @@
       </div>
     </div>`;
 
-    // ── BLOCS SECTIONS (cliquables) ───────────────────────────
+    // ── BLOCS SECTIONS (cachées par défaut, déroulables) ──────
+    html += `<div id="sectionsWrapper" style="display:none">`;
     sections.forEach(sec => {
       const secPaiements = paiements.filter(p => p.section_id === sec.id);
       const totalDu = parseFloat(sec.total_du || 0);
@@ -1063,7 +1066,6 @@
             <button class="btn-add" style="font-size:12px;padding:4px 12px" onclick="openModal_Paiement('${sec.id}')">+ AJOUTER</button>
           </div>
         </div>
-        <!-- Totaux cliquables -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
           <div onclick="editSecMontant('${sec.id}','total_du')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
             <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ ✏️</div>
@@ -1078,7 +1080,6 @@
             <div id="sec_restant_${sec.id}" style="font-size:16px;font-weight:700;color:#e74c3c">${totalRestant.toFixed(2)} €</div>
           </div>
         </div>
-        <!-- Liste paiements -->
         ${secPaiements.length === 0 ? '<div style="text-align:center;padding:10px;color:var(--texte2);font-size:13px">Aucun paiement détaillé</div>' : ''}
         ${secPaiements.map(p => {
           const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '';
@@ -1099,8 +1100,22 @@
         }).join('')}
       </div>`;
     });
+    html += `</div>`;
 
     sectionsDiv.innerHTML = html;
+  }
+
+  function toggleSections() {
+    const wrapper = document.getElementById('sectionsWrapper');
+    const btn = document.getElementById('btnToggleSections');
+    const nb = sections.length;
+    if (wrapper.style.display === 'none') {
+      wrapper.style.display = 'block';
+      btn.textContent = nb + ' section' + (nb > 1 ? 's' : '') + ' ▲';
+    } else {
+      wrapper.style.display = 'none';
+      btn.textContent = nb + ' section' + (nb > 1 ? 's' : '') + ' ▼';
+    }
   }
 
   // Édition inline des montants d'une section
