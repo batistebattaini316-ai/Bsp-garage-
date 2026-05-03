@@ -264,26 +264,14 @@
   <div class="info-box" id="clientInfoBox"></div>
 
   <!-- Paiements résumé -->
-  <div id="paiementsResume" style="margin:0 20px 16px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;display:none">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-      💳 PAIEMENTS
-      <button class="btn-add" style="font-size:13px;padding:5px 12px" onclick="openModalNouvelleSection()">+ NOUVELLE SECTION</button>
+  <div id="paiementsContainer" style="display:none">
+    <!-- Header global -->
+    <div style="margin:0 20px 10px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--or)">💳 PAIEMENTS</span>
+      <button class="btn-add" style="font-size:13px;padding:5px 14px" onclick="openModalNouvelleSection()">+ NOUVELLE SECTION</button>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <div onclick="editMontantInline('totaldu')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
-        <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ</div>
-        <div id="pTotalDu" style="font-size:16px;font-weight:700;color:var(--texte)">0 €</div>
-      </div>
-      <div onclick="editMontantInline('paye')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
-        <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ</div>
-        <div id="pTotalPaye" style="font-size:16px;font-weight:700;color:#2ecc71">0 €</div>
-      </div>
-      <div onclick="editMontantInline('restant')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
-        <div style="font-size:10px;color:#e74c3c;margin-bottom:2px">RESTANT</div>
-        <div id="pTotalRestant" style="font-size:16px;font-weight:700;color:#e74c3c">0 €</div>
-      </div>
-    </div>
-    <div id="paiementsList"></div>
+    <!-- Blocs de sections générés dynamiquement -->
+    <div id="paiementsSections"></div>
   </div>
 
   <!-- Véhicules -->
@@ -632,7 +620,6 @@
 
     renderVehicules();
     loadPaiements();
-    loadTotaux();
     goTo('pageClient');
   }
 
@@ -1007,10 +994,14 @@
 
   // ─── PAIEMENTS ─────────────────────────────────────────────
   let paiements = [];
+  let sections = []; // sections de paiement depuis Supabase
+  let currentSectionId = null; // section en cours pour le modal
 
   async function loadPaiements() {
     try {
-      // Filtré STRICTEMENT par client_id — aucune interférence
+      // Charger les sections depuis Supabase
+      sections = await sbGet('bsp_sections_paiement', '?client_id=eq.' + currentClientId + '&order=created_at.asc');
+      // Charger les paiements
       paiements = await sbGet('bsp_paiements', '?client_id=eq.' + currentClientId + '&order=created_at.asc');
       renderPaiements();
     } catch(e) {
@@ -1018,47 +1009,72 @@
     }
   }
 
-  // Stockage local des sections (titre custom par section_key)
-  let sectionsLabels = {};
-
   function renderPaiements() {
-    const resume = document.getElementById('paiementsResume');
-    const list = document.getElementById('paiementsList');
-    resume.style.display = 'block';
+    const container = document.getElementById('paiementsContainer');
+    const sectionsDiv = document.getElementById('paiementsSections');
+    container.style.display = 'block';
+
     const labels = { acompte: 'ACOMPTE', solde: 'SOLDE', paye: 'PAYÉ', impaye: 'IMPAYÉ' };
     const classes = { acompte: 'p-acompte', solde: 'p-solde', paye: 'p-paye', impaye: 'p-impaye' };
-    refreshInlineDisplay();
 
-    // Grouper par section_key (intervention_id ou '__general__')
-    const groups = {};
-    // Toujours afficher au moins la section générale
-    groups['__general__'] = [];
-    paiements.forEach(p => {
-      const key = p.intervention_id || '__general__';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(p);
-    });
-    // Ajouter les sections vides sauvegardées
-    Object.keys(sectionsLabels).forEach(k => { if (!groups[k]) groups[k] = []; });
+    // Construire la liste des sections à afficher
+    // Section "Général" toujours en premier (section_id = null)
+    const allSections = [{ id: null, titre: 'Général' }, ...sections];
 
     let html = '';
-    Object.keys(groups).forEach(key => {
-      const gp = groups[key];
-      let groupTitle = sectionsLabels[key] || (key === '__general__' ? '📋 Général' : ('📋 Section ' + key.substring(0,4)));
-      const total = gp.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      html += `<div style="margin-bottom:14px;background:var(--noir);border-radius:10px;padding:10px;border:1px solid var(--gris)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:13px;font-weight:700;color:var(--or);letter-spacing:1px">${groupTitle}</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:12px;color:var(--texte2)">${total.toFixed(2)} €</span>
-            <button style="background:var(--or);color:var(--noir);border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer" onclick="openModal_Paiement('${key}')">+ Ajouter</button>
+    allSections.forEach(sec => {
+      const secPaiements = paiements.filter(p => (p.section_id || null) === sec.id);
+      const totalDu = secPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      const totalPaye = secPaiements.filter(p => p.type === 'paye').reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      const totalRestant = totalDu - totalPaye;
+
+      html += `<div style="margin:0 20px 14px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;">
+        <!-- Titre section -->
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          💳 ${sec.titre.toUpperCase()}
+          <div style="display:flex;gap:6px;align-items:center">
+            ${sec.id ? `<button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px" onclick="deleteSection('${sec.id}')">🗑</button>` : ''}
+            <button class="btn-add" style="font-size:12px;padding:4px 12px" onclick="openModal_Paiement('${sec.id || ''}')">+ AJOUTER</button>
           </div>
         </div>
-        ${gp.length === 0 ? '<div style="text-align:center;padding:10px;color:var(--texte2);font-size:12px">Aucun paiement — appuyez sur + Ajouter</div>' : ''}
-        ${gp.map(p => { const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : ''; return `<div class="paiement-item"><div class="paiement-left"><div class="paiement-desc">${p.description || '—'}</div><div class="paiement-meta">${d}</div><span class="badge-paiement ${classes[p.type]}">${labels[p.type]}</span></div><div class="paiement-right"><div class="paiement-montant">${parseFloat(p.montant).toFixed(2)} €</div><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button style="background:none;border:1px solid var(--or);color:var(--or);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer" onclick="editPaiement('${p.id}')">✏️</button><button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px" onclick="deletePaiement('${p.id}')">🗑</button></div></div></div>`; }).join('')}
+        <!-- Totaux -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:10px;color:var(--texte2);margin-bottom:2px">TOTAL DÛ</div>
+            <div style="font-size:16px;font-weight:700;color:var(--texte)">${totalDu.toFixed(2)} €</div>
+          </div>
+          <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:10px;color:#2ecc71;margin-bottom:2px">PAYÉ</div>
+            <div style="font-size:16px;font-weight:700;color:#2ecc71">${totalPaye.toFixed(2)} €</div>
+          </div>
+          <div style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:10px;color:#e74c3c;margin-bottom:2px">RESTANT</div>
+            <div style="font-size:16px;font-weight:700;color:#e74c3c">${totalRestant.toFixed(2)} €</div>
+          </div>
+        </div>
+        <!-- Liste paiements -->
+        ${secPaiements.length === 0 ? '<div style="text-align:center;padding:10px;color:var(--texte2);font-size:13px">Aucun paiement enregistré</div>' : ''}
+        ${secPaiements.map(p => {
+          const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '';
+          return `<div class="paiement-item">
+            <div class="paiement-left">
+              <div class="paiement-desc">${p.description || '—'}</div>
+              <div class="paiement-meta">${d}</div>
+              <span class="badge-paiement ${classes[p.type]}">${labels[p.type]}</span>
+            </div>
+            <div class="paiement-right">
+              <div class="paiement-montant">${parseFloat(p.montant).toFixed(2)} €</div>
+              <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
+                <button style="background:none;border:1px solid var(--or);color:var(--or);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer" onclick="editPaiement('${p.id}')">✏️</button>
+                <button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px" onclick="deletePaiement('${p.id}')">🗑</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>`;
     });
-    list.innerHTML = html;
+
+    sectionsDiv.innerHTML = html;
   }
 
   function openModalNouvelleSection() {
@@ -1066,115 +1082,45 @@
     openModal('modalNouvelleSection');
   }
 
-  function saveNouvelleSection() {
+  async function saveNouvelleSection() {
     const titre = document.getElementById('inputSectionTitre').value.trim();
     if (!titre) { alert('Donnez un titre à cette section'); return; }
-    // Créer une clé unique pour cette section
-    const key = 'sec_' + Date.now();
-    sectionsLabels[key] = '📋 ' + titre;
-    closeModal('modalNouvelleSection');
-    renderPaiements();
-    showToast('✅ Section "' + titre + '" créée !');
-  }
-
-  // Édition inline des montants — synchronisé via Supabase
-  const inlineColors = { totaldu: 'var(--texte)', paye: '#2ecc71', restant: '#e74c3c' };
-  const inlineElIds = { totaldu: 'pTotalDu', paye: 'pTotalPaye', restant: 'pTotalRestant' };
-  let totauxCache = { total_du: 0, total_paye: 0, total_restant: 0 };
-
-  async function loadTotaux() {
+    const btn = document.getElementById('btnSaveSection');
+    btn.disabled = true;
     try {
-      const res = await sbGet('bsp_totaux', '?client_id=eq.' + currentClientId);
-      if (res && res.length > 0) {
-        totauxCache = res[0];
-      } else {
-        totauxCache = { total_du: 0, total_paye: 0, total_restant: 0 };
-      }
-      refreshInlineDisplay();
-    } catch(e) { console.error('Erreur chargement totaux', e); }
+      const [newSec] = await sbPost('bsp_sections_paiement', { client_id: currentClientId, titre });
+      sections.push(newSec);
+      closeModal('modalNouvelleSection');
+      renderPaiements();
+      showToast('✅ Section "' + titre + '" créée !');
+    } catch(e) {
+      showToast('🔴 Erreur création section');
+    } finally {
+      btn.disabled = false;
+    }
   }
 
-  async function saveTotaux() {
+  async function deleteSection(id) {
+    if (!confirm('Supprimer cette section et ses paiements ?')) return;
     try {
-      const existing = await sbGet('bsp_totaux', '?client_id=eq.' + currentClientId);
-      const data = {
-        client_id: currentClientId,
-        total_du: totauxCache.total_du,
-        total_paye: totauxCache.total_paye,
-        total_restant: totauxCache.total_restant,
-        updated_at: new Date().toISOString()
-      };
-      if (existing && existing.length > 0) {
-        await sbPatch('bsp_totaux', existing[0].id, data);
-      } else {
-        await sbPost('bsp_totaux', data);
-      }
-    } catch(e) { console.error('Erreur sauvegarde totaux', e); }
+      await sbDelete('bsp_sections_paiement', id);
+      sections = sections.filter(s => s.id !== id);
+      paiements = paiements.filter(p => p.section_id !== id);
+      renderPaiements();
+      showToast('🗑 Section supprimée');
+    } catch(e) { showToast('🔴 Erreur'); }
   }
 
-  function getInlineVal(type) {
-    const map = { totaldu: 'total_du', paye: 'total_paye', restant: 'total_restant' };
-    return parseFloat(totauxCache[map[type]] || 0);
-  }
-
-  function setInlineVal(type, val) {
-    const map = { totaldu: 'total_du', paye: 'total_paye', restant: 'total_restant' };
-    totauxCache[map[type]] = val;
-  }
-
-  function editMontantInline(type) {
-    const elId = inlineElIds[type];
-    const el = document.getElementById(elId);
-    const color = inlineColors[type];
-    const current = getInlineVal(type);
-
-    el.innerHTML = `<input id="inlineInput_${type}" type="number" step="0.01" value="${current}"
-      style="width:100%;background:transparent;border:none;border-bottom:2px solid ${color};color:${color};
-      font-size:16px;font-weight:700;text-align:center;outline:none;padding:2px 0;"
-      onblur="confirmInline('${type}')"
-      onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape')cancelInline('${type}',${current})">`;
-
-    const input = document.getElementById('inlineInput_' + type);
-    input.focus();
-    input.select();
-  }
-
-  async function confirmInline(type) {
-    const input = document.getElementById('inlineInput_' + type);
-    if (!input) return;
-    const val = parseFloat(input.value) || 0;
-    setInlineVal(type, val);
-    refreshInlineDisplay();
-    await saveTotaux();
-  }
-
-  function cancelInline(type, original) {
-    setInlineVal(type, original);
-    refreshInlineDisplay();
-  }
-
-  function refreshInlineDisplay() {
-    document.getElementById('pTotalDu').textContent = parseFloat(totauxCache.total_du || 0).toFixed(2) + ' €';
-    document.getElementById('pTotalPaye').textContent = parseFloat(totauxCache.total_paye || 0).toFixed(2) + ' €';
-    document.getElementById('pTotalRestant').textContent = parseFloat(totauxCache.total_restant || 0).toFixed(2) + ' €';
-  }
-
-  function openModal_Paiement(sectionKey) {
+  function openModal_Paiement(sectionId) {
+    currentSectionId = sectionId || null;
     document.getElementById('inputPaiementId').value = '';
-    // Si c'est une clé de section custom (sec_xxx), on ne la met pas comme intervention_id
-    const isCustomSection = sectionKey && sectionKey.startsWith('sec_');
-    document.getElementById('inputPaiementIntervId').value = isCustomSection ? '' : (sectionKey || '');
+    document.getElementById('inputPaiementIntervId').value = sectionId || '';
     document.getElementById('inputPaiementDesc').value = '';
     document.getElementById('inputPaiementMontant').value = '';
     document.getElementById('inputPaiementType').value = 'acompte';
     document.getElementById('inputPaiementDate').value = new Date().toISOString().split('T')[0];
-    let titre = 'NOUVEAU PAIEMENT';
-    if (sectionKey && sectionsLabels[sectionKey]) {
-      titre = 'PAIEMENT — ' + sectionsLabels[sectionKey].replace('📋 ','').toUpperCase();
-    } else if (sectionKey && !sectionKey.startsWith('sec_')) {
-      const iv = interventions.find(x => x.id === sectionKey);
-      if (iv) titre = 'PAIEMENT — ' + (iv.titre || 'Intervention').toUpperCase();
-    }
+    const sec = sections.find(s => s.id === sectionId);
+    const titre = sec ? 'PAIEMENT — ' + sec.titre.toUpperCase() : 'NOUVEAU PAIEMENT';
     setModalTitle('modalPaiementTitle', titre, 'modalPaiement');
     openModal('modalPaiement');
   }
@@ -1182,8 +1128,9 @@
   function editPaiement(id) {
     const p = paiements.find(x => x.id === id);
     if (!p) return;
+    currentSectionId = p.section_id || null;
     document.getElementById('inputPaiementId').value = id;
-    document.getElementById('inputPaiementIntervId').value = p.intervention_id || '';
+    document.getElementById('inputPaiementIntervId').value = p.section_id || '';
     document.getElementById('inputPaiementDesc').value = p.description || '';
     document.getElementById('inputPaiementMontant').value = p.montant || '';
     document.getElementById('inputPaiementType').value = p.type || 'acompte';
@@ -1201,14 +1148,13 @@
     btn.disabled = true; btn.textContent = 'Enregistrement...';
 
     const id = document.getElementById('inputPaiementId').value;
-    const intervId = document.getElementById('inputPaiementIntervId').value;
     const data = {
       description: desc,
       montant: parseFloat(montant),
       type: document.getElementById('inputPaiementType').value,
       date_paiement: document.getElementById('inputPaiementDate').value || null,
       client_id: currentClientId,
-      intervention_id: intervId || null
+      section_id: currentSectionId || null
     };
 
     try {
