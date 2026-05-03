@@ -1257,10 +1257,8 @@
 
     const secPaiements = paiements.filter(p => p.section_id === secId);
 
-    // TOTAL DÛ = somme des IMPAYÉS uniquement
-    const newDu = secPaiements
-      .filter(p => p.type === 'impaye')
-      .reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+    // TOTAL DÛ = jamais modifié automatiquement, saisi manuellement
+    const currentDu = parseFloat(sec.total_du || 0);
 
     // PAYÉ = somme des paye + acompte + solde
     const newPaye = secPaiements
@@ -1268,15 +1266,13 @@
       .reduce((s, p) => s + parseFloat(p.montant || 0), 0);
 
     // RESTANT = DÛ - PAYÉ
-    const newRestant = newDu - newPaye;
+    const newRestant = currentDu - newPaye;
 
-    sec.total_du = newDu;
     sec.total_paye = newPaye;
     sec.total_restant = newRestant;
 
     try {
       await sbPatch('bsp_sections_paiement', secId, {
-        total_du: newDu,
         total_paye: newPaye,
         total_restant: newRestant
       });
