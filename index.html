@@ -267,7 +267,7 @@
   <div id="paiementsResume" style="margin:0 20px 16px;background:var(--noir2);border:1px solid var(--gris);border-top:3px solid var(--or);border-radius:12px;padding:14px 16px;display:none">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
       💳 PAIEMENTS
-      <button class="btn-add" style="font-size:13px;padding:5px 12px" onclick="openModal_Paiement()">+ AJOUTER</button>
+      <button class="btn-add" style="font-size:13px;padding:5px 12px" onclick="openModal_Paiement('')">+ AJOUTER</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <div onclick="editMontantInline('totaldu')" style="flex:1;min-width:80px;background:var(--noir3);border-radius:8px;padding:8px;text-align:center;cursor:pointer" title="Toucher pour modifier">
@@ -393,6 +393,7 @@
   <div class="form-sheet">
     <div class="form-title" id="modalPaiementTitle">NOUVEAU PAIEMENT <button class="btn-close-modal" onclick="closeModal('modalPaiement')">✕</button></div>
     <input type="hidden" id="inputPaiementId">
+    <input type="hidden" id="inputPaiementIntervId">
     <div class="form-group"><label>Description *</label><input type="text" id="inputPaiementDesc" placeholder="Ex: Révision moteur, Acompte freins..."></div>
     <div class="form-group"><label>Montant (€) *</label><input type="number" id="inputPaiementMontant" placeholder="Ex: 350.00" step="0.01"></div>
     <div class="form-group"><label>Type</label>
@@ -1009,36 +1010,41 @@
     const resume = document.getElementById('paiementsResume');
     const list = document.getElementById('paiementsList');
     resume.style.display = 'block';
-
     const labels = { acompte: 'ACOMPTE', solde: 'SOLDE', paye: 'PAYÉ', impaye: 'IMPAYÉ' };
     const classes = { acompte: 'p-acompte', solde: 'p-solde', paye: 'p-paye', impaye: 'p-impaye' };
-
-    // Afficher les valeurs inline (éditées directement)
     refreshInlineDisplay();
-
     if (paiements.length === 0) {
-      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--texte2);font-size:13px">Aucun paiement enregistré</div>';
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--texte2);font-size:13px">Aucun paiement enregistré</div><button onclick="openModal_Paiement()" style="width:100%;background:none;border:1px dashed var(--gris2);color:var(--texte2);border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-top:4px">+ Nouvelle section</button>';
       return;
     }
-
-    list.innerHTML = paiements.map(p => {
-      const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '';
-      return `
-      <div class="paiement-item">
-        <div class="paiement-left">
-          <div class="paiement-desc">${p.description || '—'}</div>
-          <div class="paiement-meta">${d}</div>
-          <span class="badge-paiement ${classes[p.type]}">${labels[p.type]}</span>
-        </div>
-        <div class="paiement-right">
-          <div class="paiement-montant">${parseFloat(p.montant).toFixed(2)} €</div>
-          <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
-            <button style="background:none;border:1px solid var(--or);color:var(--or);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer" onclick="editPaiement('${p.id}')">✏️</button>
-            <button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px" onclick="deletePaiement('${p.id}')">🗑</button>
+    const groups = {};
+    paiements.forEach(p => {
+      const key = p.intervention_id || '__general__';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+    let html = '';
+    Object.keys(groups).forEach(key => {
+      const gp = groups[key];
+      let groupTitle = '📋 Général';
+      if (key !== '__general__') {
+        const iv = interventions.find(x => x.id === key);
+        groupTitle = iv ? '🔧 ' + (iv.titre || 'Intervention') : '🔧 Intervention';
+      }
+      const total = gp.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      html += `<div style="margin-bottom:14px;background:var(--noir);border-radius:10px;padding:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:700;color:var(--or);letter-spacing:1px">${groupTitle}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:var(--texte2)">${total.toFixed(2)} €</span>
+            <button style="background:var(--or);color:var(--noir);border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer" onclick="openModal_Paiement('${key === '__general__' ? '' : key}')">+ Ajouter</button>
           </div>
         </div>
+        ${gp.map(p => { const d = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : ''; return `<div class="paiement-item"><div class="paiement-left"><div class="paiement-desc">${p.description || '—'}</div><div class="paiement-meta">${d}</div><span class="badge-paiement ${classes[p.type]}">${labels[p.type]}</span></div><div class="paiement-right"><div class="paiement-montant">${parseFloat(p.montant).toFixed(2)} €</div><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button style="background:none;border:1px solid var(--or);color:var(--or);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer" onclick="editPaiement('${p.id}')">✏️</button><button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px" onclick="deletePaiement('${p.id}')">🗑</button></div></div></div>`; }).join('')}
       </div>`;
-    }).join('');
+    });
+    html += `<button onclick="openModal_Paiement()" style="width:100%;background:none;border:1px dashed var(--gris2);color:var(--texte2);border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-top:4px">+ Nouvelle section intervention</button>`;
+    list.innerHTML = html;
   }
 
   // Édition inline des montants — synchronisé via Supabase
@@ -1123,13 +1129,20 @@
     document.getElementById('pTotalRestant').textContent = parseFloat(totauxCache.total_restant || 0).toFixed(2) + ' €';
   }
 
-  function openModal_Paiement() {
+  function openModal_Paiement(intervId) {
     document.getElementById('inputPaiementId').value = '';
+    document.getElementById('inputPaiementIntervId').value = intervId || '';
     document.getElementById('inputPaiementDesc').value = '';
     document.getElementById('inputPaiementMontant').value = '';
     document.getElementById('inputPaiementType').value = 'acompte';
     document.getElementById('inputPaiementDate').value = new Date().toISOString().split('T')[0];
-    setModalTitle('modalPaiementTitle', 'NOUVEAU PAIEMENT', 'modalPaiement');
+    // Titre avec nom intervention si applicable
+    let titre = 'NOUVEAU PAIEMENT';
+    if (intervId) {
+      const iv = interventions.find(x => x.id === intervId);
+      if (iv) titre = 'PAIEMENT — ' + (iv.titre || 'Intervention').toUpperCase();
+    }
+    setModalTitle('modalPaiementTitle', titre, 'modalPaiement');
     openModal('modalPaiement');
   }
 
@@ -1137,6 +1150,7 @@
     const p = paiements.find(x => x.id === id);
     if (!p) return;
     document.getElementById('inputPaiementId').value = id;
+    document.getElementById('inputPaiementIntervId').value = p.intervention_id || '';
     document.getElementById('inputPaiementDesc').value = p.description || '';
     document.getElementById('inputPaiementMontant').value = p.montant || '';
     document.getElementById('inputPaiementType').value = p.type || 'acompte';
@@ -1154,12 +1168,14 @@
     btn.disabled = true; btn.textContent = 'Enregistrement...';
 
     const id = document.getElementById('inputPaiementId').value;
+    const intervId = document.getElementById('inputPaiementIntervId').value;
     const data = {
       description: desc,
       montant: parseFloat(montant),
       type: document.getElementById('inputPaiementType').value,
       date_paiement: document.getElementById('inputPaiementDate').value || null,
-      client_id: currentClientId  // TOUJOURS lié au client courant
+      client_id: currentClientId,
+      intervention_id: intervId || null
     };
 
     try {
